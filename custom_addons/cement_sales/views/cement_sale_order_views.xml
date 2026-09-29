@@ -1,0 +1,188 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_cement_customer" model="ir.ui.view">
+        <field name="name">sale.order.form.cement.customer</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_cement_payments" type="object"
+                        class="oe_stat_button" icon="fa-money"
+                        groups="account.group_account_invoice,account.group_account_readonly"
+                        invisible="cement_payment_count == 0">
+                    <field name="cement_payment_count" widget="statinfo" string="已收款"/>
+                </button>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="string">Odoo联系人</attribute>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <group string="水泥销售资料">
+                    <field name="cement_customer_id"/>
+                    <field name="sales_source"/>
+                    <field name="customer_reference"/>
+                    <field name="delivery_region"/>
+                    <field name="delivery_address"/>
+                    <field name="payment_term_note"/>
+                    <field name="delivery_note"/>
+                    <field name="sales_remark"/>
+                    <field name="cement_customer_company_name"/>
+                    <field name="cement_customer_phone"/>
+                    <field name="cement_customer_region"/>
+                </group>
+            </xpath>
+            <xpath expr="//group[field[@name='cement_customer_id']]" position="after">
+                <group string="回款统计" groups="account.group_account_invoice,account.group_account_readonly">
+                    <field name="company_currency_id" invisible="1"/>
+                    <field name="cement_invoiced_amount"/>
+                    <field name="cement_paid_amount"/>
+                    <field name="cement_due_amount"/>
+                    <field name="cement_payment_state" widget="badge"/>
+                    <field name="invoice_amount"/>
+                    <field name="paid_amount"/>
+                    <field name="outstanding_amount"/>
+                    <field name="payment_status" widget="badge"/>
+                    <field name="cement_last_payment_date"/>
+                </group>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="after">
+                <field name="bag_count" optional="show"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="交付记录">
+                    <field name="delivery_ids" context="{'default_sale_order_id': id, 'default_customer_id': cement_customer_id}">
+                        <list>
+                            <field name="delivery_date"/>
+                            <field name="customer_id"/>
+                            <field name="picking_id"/>
+                            <field name="delivery_region"/>
+                            <field name="bag_count"/>
+                            <field name="transport_type"/>
+                            <field name="vehicle_number"/>
+                            <field name="driver_name"/>
+                            <field name="departure_date"/>
+                            <field name="actual_delivery_date"/>
+                            <field name="freight_amount"/>
+                            <field name="state" widget="badge"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sale_order_tree_cement" model="ir.ui.view">
+        <field name="name">sale.order.list.cement</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.sale_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='partner_id']" position="after">
+                <field name="cement_customer_id" optional="show"/>
+                <field name="company_currency_id" invisible="1"/>
+                <field name="customer_reference" optional="hide"/>
+                <field name="delivery_region" optional="hide"/>
+                <field name="sales_source" optional="hide"/>
+                <field name="cement_sales_amount_company_currency" optional="hide"/>
+                <field name="cement_invoiced_amount" optional="hide"
+                       groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_paid_amount" optional="hide"
+                       groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_due_amount" optional="hide"
+                       groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="payment_status" widget="badge" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="invoice_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="paid_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="outstanding_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_payment_state" widget="badge" optional="hide"
+                       groups="account.group_account_invoice,account.group_account_readonly"/>
+            </xpath>
+            <xpath expr="//list/field[@name='state']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='amount_total']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sale_order_search_cement" model="ir.ui.view">
+        <field name="name">sale.order.search.cement</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search/field[@name='partner_id']" position="after">
+                <field name="cement_customer_id" string="水泥客户"/>
+                <field name="delivery_region" string="交付地区"/>
+                <field name="sales_source" string="销售来源"/>
+                <field name="customer_reference" string="客户参考号"/>
+            </xpath>
+            <xpath expr="//search/group" position="inside">
+                <filter name="group_cement_customer" string="水泥客户" domain="[]" context="{'group_by': 'cement_customer_id'}"/>
+                <filter name="group_delivery_region" string="交付地区" domain="[]" context="{'group_by': 'delivery_region'}"/>
+                <filter name="group_sales_source" string="销售来源" domain="[]" context="{'group_by': 'sales_source'}"/>
+                <filter name="group_cement_grade" string="水泥等级" domain="[]" context="{'group_by': 'cement_grade_analysis'}"/>
+                <filter name="group_state" string="状态" domain="[]" context="{'group_by': 'state'}"/>
+            </xpath>
+            <xpath expr="//search/group/filter[@name='salesperson']" position="attributes">
+                <attribute name="string">销售员</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_cement_sales_analysis_pivot" model="ir.ui.view">
+        <field name="name">sale.order.cement.analysis.pivot</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <pivot string="水泥销售分析" sample="1">
+                <field name="company_id" type="row"/>
+                <field name="user_id" type="row"/>
+                <field name="cement_customer_id" type="row"/>
+                <field name="delivery_region" type="row"/>
+                <field name="cement_grade_analysis" type="row"/>
+                <field name="date_order" type="col" interval="month"/>
+                <field name="cement_sales_amount_company_currency" type="measure"/>
+                <field name="cement_delivery_quantity" type="measure"/>
+                <field name="invoice_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="paid_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="outstanding_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_cement_sales_analysis_list" model="ir.ui.view">
+        <field name="name">sale.order.cement.analysis.list</field><field name="model">sale.order</field>
+        <field name="arch" type="xml"><list string="销售分析"><field name="date_order"/><field name="user_id"/><field name="cement_customer_id"/><field name="delivery_region"/><field name="cement_grade_analysis"/><field name="name"/><field name="cement_sales_amount_company_currency"/><field name="cement_delivery_quantity"/><field name="invoice_amount" groups="account.group_account_invoice,account.group_account_readonly"/><field name="paid_amount" groups="account.group_account_invoice,account.group_account_readonly"/><field name="outstanding_amount" groups="account.group_account_invoice,account.group_account_readonly"/><field name="cement_payment_count" groups="account.group_account_invoice,account.group_account_readonly"/></list></field>
+    </record>
+    <record id="view_cement_sales_analysis_graph" model="ir.ui.view">
+        <field name="name">sale.order.cement.analysis.graph</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <graph string="销售分析" type="bar">
+                <field name="user_id" type="row"/>
+                <field name="date_order" interval="month" type="col"/>
+                <field name="cement_sales_amount_company_currency" type="measure"/>
+                <field name="cement_delivery_quantity" type="measure"/>
+                <field name="invoice_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="paid_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="outstanding_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+            </graph>
+        </field>
+    </record>
+    <record id="action_cement_sales_analysis" model="ir.actions.server">
+        <field name="name">水泥销售分析</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_cement_sales_analysis()</field>
+    </record>
+    <record id="action_cement_sales_dashboard" model="ir.actions.client">
+        <field name="name">销售仪表盘</field>
+        <field name="tag">cement_sales_dashboard</field>
+    </record>
+    <menuitem id="menu_cement_sales_dashboard" name="销售仪表盘"
+              parent="menu_cement_sales_root" action="action_cement_sales_dashboard"
+              sequence="5"
+              groups="sales_team.group_sale_salesman,account.group_account_invoice,account.group_account_readonly"/>
+    <menuitem id="menu_cement_sales_analysis" name="销售分析"
+              parent="menu_cement_sales_root" action="action_cement_sales_analysis"
+              sequence="35" groups="sales_team.group_sale_salesman,account.group_account_invoice,account.group_account_readonly"/>
+</odoo>

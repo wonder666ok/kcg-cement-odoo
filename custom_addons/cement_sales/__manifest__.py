@@ -1,0 +1,27 @@
+{
+    "name": "Cement Sales",
+    "summary": "Manage cement sales customers",
+    "description": "Customer records for the KCG Cement sales workflow.",
+    "version": "18.0.1.0.0",
+    "category": "Sales",
+    "license": "LGPL-3",
+    "depends": ["base", "web", "sale", "stock", "sale_stock", "account"],
+    "assets": {
+        "web.assets_backend": [
+            "cement_sales/static/src/js/cement_sales_dashboard.js",
+            "cement_sales/static/src/xml/cement_sales_dashboard.xml",
+            "cement_sales/static/src/scss/cement_sales_dashboard.scss",
+        ],
+    },
+    "data": [
+        "security/ir.model.access.csv",
+        "views/cement_customer_views.xml",
+        "views/cement_payment_views.xml",
+        "views/cement_followup_views.xml",
+        "views/cement_product_views.xml",
+        "views/cement_sale_order_views.xml",
+        "views/cement_delivery_views.xml",
+    ],
+    "application": True,
+    "installable": True,
+}

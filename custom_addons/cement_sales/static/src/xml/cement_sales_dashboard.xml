@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="cement_sales.CementSalesDashboard">
+        <div class="o_cement_sales_dashboard h-100 overflow-auto">
+            <div class="container-fluid py-3 px-3 px-lg-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                    <div>
+                        <h1 class="h3 mb-1">KCG 水泥销售经营驾驶舱</h1>
+                        <div class="text-muted" t-if="state.data">
+                            <t t-esc="state.data.date_from"/> 至 <t t-esc="state.data.period_label"/> · 公司币种 <t t-esc="state.data.currency.name"/>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="cement-dashboard-period" class="form-label mb-0">统计范围</label>
+                        <select id="cement-dashboard-period" class="form-select w-auto" t-att-value="state.period" t-on-change="onPeriodChange">
+                            <option value="today">今日</option><option value="week">本周</option><option value="month">本月</option><option value="quarter">本季度</option><option value="year">本年度</option>
+                        </select>
+                        <button type="button" class="btn btn-secondary" t-on-click="loadDashboard">刷新</button>
+                    </div>
+                </div>
+                <div t-if="state.error" class="alert alert-danger" role="alert"><t t-esc="state.error"/></div>
+                <div t-if="state.loading" class="text-center py-5"><i class="fa fa-spinner fa-spin fa-2x" aria-label="加载中"/><div class="mt-2 text-muted">正在读取经营数据…</div></div>
+
+                <t t-if="state.data &amp;&amp; !state.loading">
+                    <section class="mb-4">
+                        <h2 class="h5 mb-3">销售概览</h2>
+                        <t t-foreach="kpiRows" t-as="row" t-key="row_index">
+                            <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-3">
+                                <t t-foreach="row" t-as="card" t-key="card.key">
+                                    <div class="col">
+                                        <button type="button" class="card o_cement_dashboard_kpi h-100 border-0 shadow-sm w-100 text-start" t-on-click="() => this.onKpiClick(card.key)">
+                                            <span class="card-body">
+                                                <span class="text-muted small d-block mb-2"><t t-esc="card.label"/></span>
+                                                <span class="h4 mb-0 fw-semibold d-block"><t t-esc="formatCard(card)"/></span>
+                                            </span>
+                                        </button>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+                    </section>
+
+                    <section class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white"><h2 class="h5 mb-0">销售趋势（最近 12 个月）</h2></div>
+                        <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                            <thead><tr><th>月份</th><th class="text-end">订单数量</th><th class="text-end">销售袋数</th><th class="text-end">销售金额</th></tr></thead>
+                            <tbody><tr t-foreach="state.data.trend" t-as="row" t-key="row.month"><td><t t-esc="row.month"/></td><td class="text-end"><t t-esc="formatNumber(row.order_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.sales_bags)"/></td><td class="text-end"><t t-esc="formatMoney(row.sales_amount)"/></td></tr></tbody>
+                        </table></div>
+                    </section>
+
+                    <section class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white"><h2 class="h5 mb-0">水泥等级销售</h2></div>
+                        <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                            <thead><tr><th>水泥等级</th><th class="text-end">销售袋数</th><th class="text-end">销售金额</th><th class="text-end">订单数量</th></tr></thead>
+                            <tbody><tr t-foreach="state.data.grades" t-as="row" t-key="row.grade"><td><t t-esc="row.grade"/></td><td class="text-end"><t t-esc="formatNumber(row.bags)"/></td><td class="text-end"><t t-esc="formatMoney(row.sales_amount)"/></td><td class="text-end"><t t-esc="formatNumber(row.order_count)"/></td></tr><tr t-if="!state.data.grades.length"><td colspan="4" class="text-center text-muted py-3">暂无数据</td></tr></tbody>
+                        </table></div>
+                    </section>
+
+                    <section class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white"><h2 class="h5 mb-0">销售员统计</h2></div>
+                        <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                            <thead><tr><th>销售员</th><th class="text-end">客户数</th><th class="text-end">跟进数</th><th class="text-end">报价</th><th class="text-end">确认订单</th><th class="text-end">销售袋数</th><th class="text-end">销售金额</th><th class="text-end">回款</th></tr></thead>
+                            <tbody><tr t-foreach="state.data.salespersons" t-as="row" t-key="row.id || row.name"><td><t t-esc="row.name"/></td><td class="text-end"><t t-esc="formatNumber(row.customer_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.followup_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.quotation_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.confirmed_order_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.sales_bags)"/></td><td class="text-end"><t t-esc="formatMoney(row.sales_amount)"/></td><td class="text-end"><t t-esc="formatMoney(row.payment_amount)"/></td></tr></tbody>
+                        </table></div>
+                    </section>
+
+                    <section class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white"><h2 class="h5 mb-0">客户销售</h2></div>
+                        <div class="table-responsive o_cement_customer_dashboard_table"><table class="table table-hover align-middle mb-0">
+                            <thead><tr><th>客户</th><th>地区</th><th>销售员</th><th class="text-end">订单数</th><th class="text-end">销售袋数</th><th class="text-end">销售金额</th><th>最近订单</th><th class="text-end">当前应收</th></tr></thead>
+                            <tbody><tr t-foreach="state.data.customers" t-as="row" t-key="row.id"><td><button class="btn btn-link p-0" t-on-click="() => this.openCustomer(row.id)"><t t-esc="row.name"/></button></td><td><t t-esc="row.region"/></td><td><t t-esc="row.salesperson"/></td><td class="text-end"><t t-esc="formatNumber(row.order_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.sales_bags)"/></td><td class="text-end"><t t-esc="formatMoney(row.sales_amount)"/></td><td><t t-esc="formatDate(row.last_order_date)"/></td><td class="text-end"><t t-if="state.data.has_accounting_access" t-esc="formatMoney(row.receivable_amount)"/><t t-else="">暂无权限</t></td></tr></tbody>
+                        </table></div>
+                    </section>
+
+                    <section class="row g-4 mb-4">
+                        <div class="col-12 col-xl-6"><div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white"><h2 class="h5 mb-0">今日需要跟进</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>客户</th><th>销售员</th><th>跟进类型</th><th>日期</th><th>状态</th></tr></thead><tbody><tr t-foreach="state.data.today_followups" t-as="row" t-key="row.id" t-on-click="() => this.openFollowup(row.id)" class="o_cement_dashboard_clickable"><td><t t-esc="row.customer"/></td><td><t t-esc="row.salesperson"/></td><td><t t-esc="row.followup_type"/></td><td><t t-esc="formatDate(row.date)"/></td><td><t t-esc="row.state"/></td></tr><tr t-if="!state.data.today_followups.length"><td colspan="5" class="text-center text-muted py-3">暂无待办</td></tr></tbody></table></div>
+                        </div></div>
+                        <div class="col-12 col-xl-6"><div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white"><h2 class="h5 mb-0">逾期跟进</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>客户</th><th>销售员</th><th>原计划日期</th><th class="text-end">逾期天数</th><th>状态</th></tr></thead><tbody><tr t-foreach="state.data.overdue_followups" t-as="row" t-key="row.id" t-on-click="() => this.openFollowup(row.id)" class="o_cement_dashboard_clickable"><td><t t-esc="row.customer"/></td><td><t t-esc="row.salesperson"/></td><td><t t-esc="formatDate(row.date)"/></td><td class="text-end"><t t-esc="formatNumber(row.overdue_days)"/></td><td><t t-esc="row.state"/></td></tr><tr t-if="!state.data.overdue_followups.length"><td colspan="5" class="text-center text-muted py-3">暂无逾期跟进</td></tr></tbody></table></div>
+                        </div></div>
+                    </section>
+
+                    <section class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white"><h2 class="h5 mb-0">物流管理 · 待交付订单</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>订单</th><th>客户</th><th>水泥等级</th><th class="text-end">数量 / 袋</th><th>交货日期</th><th>运输状态</th></tr></thead><tbody><tr t-foreach="state.data.pending_deliveries" t-as="row" t-key="row.id" t-on-click="() => this.openDelivery(row.id)" class="o_cement_dashboard_clickable"><td><t t-esc="row.order"/></td><td><t t-esc="row.customer"/></td><td><t t-esc="row.grade"/></td><td class="text-end"><t t-esc="formatNumber(row.quantity)"/></td><td><t t-esc="formatDate(row.date)"/></td><td><t t-esc="row.state"/></td></tr><tr t-if="!state.data.pending_deliveries.length"><td colspan="6" class="text-center text-muted py-3">暂无待交付记录</td></tr></tbody></table></div>
+                    </section>
+
+                    <section class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white"><h2 class="h5 mb-0">财务管理 · 应收情况</h2></div>
+                        <div t-if="!state.data.has_accounting_access" class="card-body text-muted">当前用户没有发票读取权限。</div>
+                        <div t-else="" class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>客户</th><th>发票</th><th>发票日期</th><th>到期日期</th><th class="text-end">发票金额</th><th class="text-end">已付款</th><th class="text-end">未付款</th><th>状态</th></tr></thead><tbody><tr t-foreach="state.data.receivables" t-as="row" t-key="row.id" t-on-click="() => this.openInvoice(row.id)" class="o_cement_dashboard_clickable"><td><t t-esc="row.customer"/></td><td><t t-esc="row.name"/></td><td><t t-esc="formatDate(row.invoice_date)"/></td><td><t t-esc="formatDate(row.due_date)"/></td><td class="text-end"><t t-esc="formatInvoiceMoney(row, 'amount')"/></td><td class="text-end"><t t-esc="formatInvoiceMoney(row, 'paid')"/></td><td class="text-end"><t t-esc="formatInvoiceMoney(row, 'residual')"/></td><td><t t-esc="row.status"/></td></tr><tr t-if="!state.data.receivables.length"><td colspan="8" class="text-center text-muted py-3">暂无未结清发票</td></tr></tbody></table></div>
+                    </section>
+                </t>
+            </div>
+        </div>
+    </t>
+</templates>

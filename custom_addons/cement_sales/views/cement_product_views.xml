@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_cement" model="ir.ui.view">
+        <field name="name">product.template.form.cement</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="水泥信息">
+                    <group>
+                        <field name="cement_grade"/>
+                        <field name="bag_weight_kg"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

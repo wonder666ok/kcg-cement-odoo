@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_cement_delivery_search" model="ir.ui.view">
+        <field name="name">cement.delivery.search</field>
+        <field name="model">cement.delivery</field>
+        <field name="arch" type="xml">
+            <search string="运输管理">
+                <field name="sale_order_id"/>
+                <field name="customer_id"/>
+                <field name="delivery_region"/>
+                <field name="vehicle_number"/>
+                <field name="driver_name"/>
+                <field name="transport_type"/>
+                <field name="transporter_name"/>
+                <field name="tracking_reference"/>
+                <field name="delivery_contact"/>
+                <field name="receiver_name"/>
+                <field name="scheduled_datetime"/>
+                <field name="loading_date"/>
+                <field name="departure_date"/>
+                <field name="actual_delivery_date"/>
+                <field name="picking_id"/>
+                <field name="state"/>
+                <filter name="state_pending" string="待安排" domain="[('state', '=', 'draft')]"/>
+                <filter name="state_scheduled" string="已安排" domain="[('state', '=', 'scheduled')]"/>
+                <filter name="state_in_transit" string="运输中" domain="[('state', '=', 'in_transit')]"/>
+                <filter name="state_delivered" string="已送达" domain="[('state', '=', 'delivered')]"/>
+                <filter name="state_cancelled" string="已取消" domain="[('state', '=', 'cancelled')]"/>
+                <filter name="delivery_today" string="今天" domain="[('delivery_date', '=', context_today())]"/>
+                <filter name="delivery_date_period" string="交货日期" date="delivery_date"/>
+                <filter name="has_transport_issue" string="有运输异常" domain="[('issue_note', '!=', False)]"/>
+                <group>
+                    <filter name="group_customer" string="按客户" context="{'group_by': 'customer_id'}"/>
+                    <filter name="group_region" string="按交货地区" context="{'group_by': 'delivery_region'}"/>
+                    <filter name="group_state" string="按状态" context="{'group_by': 'state'}"/>
+                    <filter name="group_driver" string="按司机" context="{'group_by': 'driver_name'}"/>
+                    <filter name="group_transporter" string="按承运人" context="{'group_by': 'transporter_name'}"/>
+                    <filter name="group_transport_type" string="按运输方式" context="{'group_by': 'transport_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_cement_delivery_list" model="ir.ui.view">
+        <field name="name">cement.delivery.list</field>
+        <field name="model">cement.delivery</field>
+        <field name="arch" type="xml">
+            <list string="运输管理" default_order="delivery_date desc, id desc"
+                  decoration-muted="state == 'draft'"
+                  decoration-info="state == 'scheduled'"
+                  decoration-warning="state == 'in_transit'"
+                  decoration-success="state == 'delivered'"
+                  decoration-danger="state == 'cancelled'">
+                <field name="delivery_date"/>
+                <field name="sale_order_id"/>
+                <field name="picking_id" optional="show"/>
+                <field name="customer_id"/>
+                <field name="delivery_region"/>
+                <field name="bag_count"/>
+                <field name="cement_grade" optional="hide"/>
+                <field name="transport_type"/>
+                <field name="vehicle_number"/>
+                <field name="driver_name"/>
+                <field name="scheduled_datetime" optional="hide"/>
+                <field name="loading_date" optional="hide"/>
+                <field name="departure_date"/>
+                <field name="actual_delivery_date"/>
+                <field name="freight_amount" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'draft'"
+                       decoration-info="state == 'scheduled'"
+                       decoration-warning="state == 'in_transit'"
+                       decoration-success="state == 'delivered'"
+                       decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cement_delivery_kanban" model="ir.ui.view">
+        <field name="name">cement.delivery.kanban</field>
+        <field name="model">cement.delivery</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" records_draggable="false" groups_draggable="false"
+                    group_create="false" quick_create="false">
+                <field name="state"/>
+                <field name="customer_id"/>
+                <field name="sale_order_id"/>
+                <field name="delivery_region"/>
+                <field name="bag_count"/>
+                <field name="vehicle_number"/>
+                <field name="driver_name"/>
+                <field name="delivery_date"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="fw-bold"><field name="customer_id"/></div>
+                            <div>销售订单：<field name="sale_order_id"/></div>
+                            <div>交货地区：<field name="delivery_region"/></div>
+                            <div>袋数：<field name="bag_count"/></div>
+                            <div>车牌号：<field name="vehicle_number"/></div>
+                            <div>司机：<field name="driver_name"/></div>
+                            <div>交货日期：<field name="delivery_date"/></div>
+                            <div class="mt-2"><field name="state"/></div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_cement_delivery_form" model="ir.ui.view">
+        <field name="name">cement.delivery.form</field>
+        <field name="model">cement.delivery</field>
+        <field name="arch" type="xml">
+            <form string="水泥交付与运输记录">
+                <header>
+                    <button name="action_schedule_transport" type="object" string="安排运输"
+                            class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_start_transport" type="object" string="开始运输"
+                            class="oe_highlight" invisible="state != 'scheduled'"/>
+                    <button name="action_mark_transport_delivered" type="object" string="确认送达"
+                            class="oe_highlight" invisible="state != 'in_transit'"/>
+                    <button name="action_cancel_transport" type="object" string="取消运输"
+                            invisible="state not in ('draft', 'scheduled', 'in_transit')"/>
+                    <button name="action_reset_transport" type="object" string="恢复待安排"
+                            invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,scheduled,in_transit,delivered,cancelled"
+                           readonly="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="sale_order_id"/></h1>
+                    </div>
+                    <group>
+                        <group string="销售订单">
+                            <field name="sale_order_id"/>
+                            <field name="customer_id"/>
+                            <field name="picking_id" domain="[('sale_id', '=', sale_order_id)]"/>
+                        </group>
+                        <group string="交付信息">
+                            <field name="delivery_date"/>
+                            <field name="delivery_region"/>
+                            <field name="delivery_address"/>
+                            <field name="cement_grade"/>
+                            <field name="quantity"/>
+                            <field name="bag_count"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="运输信息">
+                            <field name="transport_type"/>
+                            <field name="transporter_name"/>
+                            <field name="transporter_phone"/>
+                            <field name="vehicle_number"/>
+                            <field name="driver_name"/>
+                            <field name="driver_phone"/>
+                            <field name="tracking_reference"/>
+                            <field name="scheduled_datetime"/>
+                            <field name="loading_date"/>
+                            <field name="departure_date"/>
+                        </group>
+                        <group string="收货信息">
+                            <field name="delivery_contact"/>
+                            <field name="delivery_phone"/>
+                            <field name="receiver_name"/>
+                            <field name="receiver_phone"/>
+                            <field name="actual_delivery_date"/>
+                            <field name="delivery_days" readonly="1"/>
+                            <field name="received_quantity"/>
+                            <field name="received_bag_count"/>
+                            <field name="shortage_quantity"/>
+                            <field name="damage_quantity"/>
+                            <field name="proof_of_delivery" filename="proof_filename"/>
+                            <field name="proof_filename" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="费用">
+                        <field name="currency_id" invisible="1"/>
+                        <field name="freight_amount"/>
+                        <field name="freight_payer"/>
+                    </group>
+                    <group string="备注和异常">
+                        <field name="delivery_notes"/>
+                        <field name="issue_note"/>
+                        <field name="notes"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_cement_delivery" model="ir.actions.act_window">
+        <field name="name">交付管理</field>
+        <field name="res_model">cement.delivery</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_cement_delivery_search"/>
+    </record>
+
+    <menuitem id="menu_cement_delivery" name="交付管理"
+              parent="menu_cement_sales_root" action="action_cement_delivery" sequence="40"/>
+    <menuitem id="menu_cement_stock_pickings" name="发货管理"
+              parent="menu_cement_sales_root" action="stock.action_picking_tree_all" sequence="50"/>
+</odoo>

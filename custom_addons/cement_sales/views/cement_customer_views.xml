@@ -1,0 +1,338 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_cement_customer_search" model="ir.ui.view">
+        <field name="name">cement.customer.search</field>
+        <field name="model">cement.customer</field>
+        <field name="arch" type="xml">
+            <search string="客户">
+                <field name="name"/>
+                <field name="company_name"/>
+                <field name="phone"/>
+                <field name="region"/>
+                <field name="sales_person"/>
+                <field name="customer_status"/>
+
+                <field name="recent_order" invisible="1"/>
+                <field name="has_receivable" invisible="1"
+                       groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="overdue_invoice_count" invisible="1"
+                       groups="account.group_account_invoice,account.group_account_readonly"/>
+
+                <filter name="has_invoices" string="有发票" domain="[('invoice_count', '&gt;', 0)]" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <filter name="has_unpaid" string="有未付款" domain="[('has_receivable', '=', True)]" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <filter name="has_receivable" string="有应收"
+                        domain="[('has_receivable', '=', True)]"
+                        groups="account.group_account_invoice,account.group_account_readonly"/>
+                <filter name="has_overdue_invoices" string="逾期客户"
+                        domain="[('overdue_invoice_count', '&gt;', 0)]"
+                        groups="account.group_account_invoice,account.group_account_readonly"/>
+                <filter name="my_cement_customers" string="我的客户"
+                        domain="[('sales_person', '=', uid)]"/>
+                <filter name="new_cement_customers" string="新客户"
+                        domain="[('customer_status', '=', 'new')]"/>
+                <filter name="active_cement_customers" string="活跃客户"
+                        domain="[('customer_status', '=', 'active')]"/>
+                <filter name="recent_cement_orders" string="近期有订单"
+                        domain="[('recent_order', '=', True)]"/>
+                <separator/>
+                <filter name="followup_today" string="今日跟进"
+                        domain="[('next_followup_date', '=', context_today())]"/>
+                <filter name="followup_overdue" string="已逾期"
+                        domain="[('next_followup_date', '!=', False), ('next_followup_date', '&lt;', context_today())]"/>
+                <filter name="followup_future" string="未来跟进"
+                        domain="[('next_followup_date', '&gt;', context_today())]"/>
+                <filter name="followup_without_date" string="无下次跟进"
+                        domain="[('next_followup_date', '=', False)]"/>
+                <group>
+                    <filter name="group_sales_person" string="销售员" context="{'group_by': 'sales_person'}"/>
+                    <filter name="group_region" string="地区" context="{'group_by': 'region'}"/>
+                    <filter name="group_customer_status" string="客户状态" context="{'group_by': 'customer_status'}"/>
+                    <filter name="group_customer_source" string="客户来源" context="{'group_by': 'customer_source'}"/>
+                    <filter name="group_receivable_status" string="应收状态" context="{'group_by': 'receivable_status'}" groups="account.group_account_invoice,account.group_account_readonly"/>
+                </group>
+                <filter name="followup_due_soon" string="近期需要跟进"
+                        domain="[('next_followup_date', '!=', False), ('next_followup_date', '&lt;=', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_cement_customer_list" model="ir.ui.view">
+        <field name="name">cement.customer.list</field>
+        <field name="model">cement.customer</field>
+        <field name="arch" type="xml">
+            <list string="客户">
+                <field name="name"/>
+                <field name="company_name"/>
+                <field name="phone"/>
+                <field name="whatsapp"/>
+                <field name="region"/>
+                <field name="sales_person"/>
+                <field name="customer_status"/>
+
+                <field name="next_followup_date"/>
+                <field name="sales_currency_id" invisible="1"/>
+                <field name="total_sales_amount"/>
+                <field name="invoice_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="payment_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="outstanding_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="overdue_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="financial_currency_id" invisible="1"
+                       groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="total_due_amount"
+                       groups="account.group_account_invoice,account.group_account_readonly"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cement_customer_form" model="ir.ui.view">
+        <field name="name">cement.customer.form</field>
+        <field name="model">cement.customer</field>
+        <field name="arch" type="xml">
+            <form string="客户">
+                <header>
+                    <button name="action_new_cement_quotation" type="object"
+                            string="新建报价" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_create_partner" type="object"
+                                class="oe_stat_button" icon="fa-user-plus"
+                                invisible="partner_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">创建 Odoo 联系人</span>
+                            </div>
+                        </button>
+                        <button name="action_view_partner" type="object"
+                                class="oe_stat_button" icon="fa-address-card"
+                                invisible="not partner_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">查看 Odoo 联系人</span>
+                            </div>
+                        </button>
+                        <button name="action_view_customer_invoices" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                groups="account.group_account_invoice,account.group_account_readonly"
+                                invisible="not partner_id">
+                            <field name="invoice_count" widget="statinfo" string="发票数量"/>
+                        </button>
+                        <button name="action_view_customer_receivables" type="object" class="oe_stat_button" icon="fa-exclamation-circle" groups="account.group_account_invoice,account.group_account_readonly" invisible="not has_receivable"><field name="outstanding_amount" widget="statinfo" string="应收"/></button>
+                        <button name="action_view_customer_overdue_receivables" type="object" class="oe_stat_button" icon="fa-clock-o" groups="account.group_account_invoice,account.group_account_readonly" invisible="overdue_invoice_count == 0"><field name="overdue_invoice_count" widget="statinfo" string="逾期应收"/></button>
+                        <button name="action_view_cement_orders" type="object"
+                                class="oe_stat_button" icon="fa-list-alt">
+                            <field name="quotation_count" widget="statinfo" string="报价数量"/>
+                        </button>
+                        <button name="action_view_confirmed_cement_orders" type="object"
+                                class="oe_stat_button" icon="fa-check-circle">
+                            <field name="confirmed_order_count" widget="statinfo" string="已确认订单数量"/>
+                        </button>
+                        <button name="action_view_customer_deliveries" type="object"
+                                class="oe_stat_button" icon="fa-truck">
+                            <field name="delivery_count" widget="statinfo" string="运输记录"/>
+                        </button>
+                        <button name="action_view_customer_pickings" type="object"
+                                class="oe_stat_button" icon="fa-truck"
+                                groups="stock.group_stock_user">
+                            <field name="picking_count" widget="statinfo" string="发货数量"/>
+                        </button>
+                        <button name="action_view_customer_payments" type="object"
+                                class="oe_stat_button" icon="fa-money"
+                                groups="account.group_account_invoice,account.group_account_readonly"
+                                invisible="not partner_id">
+                            <field name="payment_count" widget="statinfo" string="Odoo收款"/>
+                        </button>
+                        <button name="action_view_cement_payments" type="object"
+                                class="oe_stat_button" icon="fa-money">
+                            <field name="payment_record_count" widget="statinfo" string="回款记录"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="客户名称"/>
+                        <h1><field name="name" placeholder="客户名称"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="phone"/>
+                            <field name="email"/>
+                            <field name="whatsapp"/>
+                            <field name="region"/>
+                            <field name="sales_person"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group>
+                            <field name="company_name"/>
+                            <field name="customer_type"/>
+
+                            <field name="customer_status"/>
+
+                            <field name="next_followup_date"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="status" invisible="partner_id">
+                        请先创建或关联 Odoo 联系人，之后即可查看客户发票及财务统计。
+                    </div>
+                    <group string="销售统计">
+                        <field name="sales_currency_id" invisible="1"/>
+                        <field name="total_sales_amount"/>
+                        <field name="last_order_date"/>
+                        <field name="quotation_count"/>
+                        <field name="confirmed_order_count"/>
+                        <field name="delivery_count"/>
+                        <field name="payment_record_count"/>
+                        <field name="last_followup_date"/>
+                        <field name="followup_count"/>
+                        <field name="pending_followup_count"/>
+                        <field name="overdue_followup_count"/>
+                    </group>
+                    <group string="业务回款统计">
+                        <field name="payment_currency_id" invisible="1"/>
+                        <field name="has_multiple_payment_currencies" invisible="1"/>
+                        <field name="payment_record_count"/>
+                        <field name="confirmed_payment_count"/>
+                        <field name="last_cement_payment_date"/>
+                        <field name="total_payment_amount"/>
+                        <div class="alert alert-warning" role="alert"
+                             invisible="not has_multiple_payment_currencies">
+                            已确认回款包含多种币种，累计金额已按付款日期折算为当前公司本位币。
+                        </div>
+                    </group>
+                    <group string="财务统计" invisible="not partner_id"
+                           groups="account.group_account_invoice,account.group_account_readonly">
+                        <field name="financial_currency_id" invisible="1"/>
+                        <field name="has_multiple_invoice_currencies" invisible="1"/>
+                        <field name="invoice_count"/>
+                        <field name="invoice_amount" string="累计开票"/>
+                        <field name="payment_amount" string="已确认回款"/>
+                        <field name="outstanding_amount" string="未收款"/>
+                        <field name="overdue_amount" string="逾期未收款"/>
+                        <field name="last_payment_date"/>
+                        <field name="receivable_status" widget="badge"/>
+                        <field name="overdue_invoice_count"/>
+                        <div class="alert alert-warning" role="alert"
+                             invisible="not has_multiple_invoice_currencies">
+                            发票涉及多种币种，金额已按发票日期和当前日期折算为当前公司的本位币。
+                        </div>
+                    </group>
+                    <group>
+                        <field name="notes"/>
+                    </group>
+                    <notebook>
+                        <page string="销售订单">
+                            <field name="sale_order_ids"
+                                   context="{'default_cement_customer_id': id, 'default_partner_id': partner_id}">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="date_order"/>
+                                    <field name="customer_reference"/>
+                                    <field name="delivery_region"/>
+                                    <field name="user_id"/>
+                                    <field name="delivery_count" string="发货数量"/>
+                                    <field name="state"/>
+                                    <field name="amount_total"/>
+                                    <field name="company_currency_id" invisible="1"/>
+                                    <field name="company_currency_id" string="公司本位币" optional="hide"/>
+                                    <field name="cement_invoiced_amount" optional="hide"
+                                           groups="account.group_account_invoice,account.group_account_readonly"/>
+                                    <field name="cement_paid_amount" optional="hide"
+                                           groups="account.group_account_invoice,account.group_account_readonly"/>
+                                    <field name="cement_due_amount" optional="hide"
+                                           groups="account.group_account_invoice,account.group_account_readonly"/>
+                                    <field name="cement_payment_state" widget="badge" optional="hide"
+                                           groups="account.group_account_invoice,account.group_account_readonly"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="交付记录">
+                            <field name="delivery_ids" context="{'default_customer_id': id}">
+                                <list>
+                                    <field name="delivery_date"/>
+                                    <field name="sale_order_id"/>
+                                    <field name="picking_id"/>
+                                    <field name="delivery_region"/>
+                                    <field name="bag_count"/>
+                                    <field name="transport_type"/>
+                                    <field name="vehicle_number"/>
+                                    <field name="driver_name"/>
+                                    <field name="departure_date"/>
+                                    <field name="actual_delivery_date"/>
+                                    <field name="freight_amount"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="跟进记录">
+                            <field name="followup_ids" context="{'default_customer_id': id, 'default_salesperson_id': sales_person or uid}">
+                                <list editable="bottom">
+                                    <field name="date"/>
+                                    <field name="subject"/>
+                                    <field name="followup_type"/>
+                                    <field name="salesperson_id"/>
+                                    <field name="state"/>
+                                    <field name="result"/>
+                                    <field name="next_followup_date"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="客户发票" invisible="not partner_id"
+                              groups="account.group_account_invoice,account.group_account_readonly">
+                            <field name="invoice_ids" readonly="1">
+                                <list create="false" edit="false" delete="false">
+                                    <field name="name" string="发票号码"/>
+                                    <field name="invoice_date" string="发票日期"/>
+                                    <field name="invoice_date_due" string="到期日期"/>
+                                    <field name="partner_id" string="客户"/>
+                                    <field name="invoice_origin" string="销售订单"/>
+                                    <field name="currency_id" string="币种"/>
+                                    <field name="amount_residual" string="未付金额" widget="monetary"/>
+                                    <field name="payment_state" string="付款状态" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Odoo收款记录" invisible="not partner_id"
+                              groups="account.group_account_invoice,account.group_account_readonly">
+                            <field name="account_payment_ids" readonly="1">
+                                <list create="false" edit="false" delete="false">
+                                    <field name="date" string="日期"/>
+                                    <field name="reconciled_invoice_ids" string="发票" widget="many2many_tags"/>
+                                    <field name="cement_sale_order_ids" string="销售订单" widget="many2many_tags"/>
+                                    <field name="amount" string="金额" widget="monetary"/>
+                                    <field name="currency_id" string="币种"/>
+                                    <field name="state" string="付款状态" widget="badge"/>
+                                    <field name="payment_method_line_id" string="付款方式"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="回款记录">
+                            <field name="payment_ids"
+                                   context="{'default_customer_id': id, 'default_salesperson_id': uid}">
+                                <list>
+                                    <field name="payment_date"/>
+                                    <field name="sale_order_id"/>
+                                    <field name="invoice_id"/>
+                                    <field name="amount" widget="monetary"/>
+                                    <field name="currency_id"/>
+                                    <field name="payment_method"/>
+                                    <field name="status" widget="badge"/>
+                                    <field name="salesperson_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_cement_customer" model="ir.actions.act_window">
+        <field name="name">客户</field>
+        <field name="res_model">cement.customer</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_cement_customer_search"/>
+    </record>
+
+    <menuitem id="menu_cement_sales_root" name="Cement Sales" sequence="10"/>
+    <menuitem id="menu_cement_customer" name="Customers" parent="menu_cement_sales_root"
+              action="action_cement_customer" sequence="10"/>
+    <menuitem id="menu_cement_sales_orders" name="销售订单"
+              parent="menu_cement_sales_root" action="sale.action_orders" sequence="30"/>
+</odoo>

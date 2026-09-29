@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_cement_customer_user,access.cement.customer.user,model_cement_customer,base.group_user,1,1,1,1
+access_cement_followup_user,access.cement.followup.user,model_cement_followup,base.group_user,1,1,1,1
+access_cement_delivery_user,access.cement.delivery.user,model_cement_delivery,base.group_user,1,1,1,1
+access_cement_payment_user,access.cement.payment.user,model_cement_payment,base.group_user,1,1,1,1
