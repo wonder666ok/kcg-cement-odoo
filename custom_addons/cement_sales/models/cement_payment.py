@@ -1,6 +1,15 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+import logging
+
+_logger = logging.getLogger(__name__)
+
+# 原生收款可同步的过账状态（Odoo 18 起收款状态含 in_process / paid）
+NATIVE_SYNC_STATES = ("posted", "in_process", "paid")
+# 日记账类型 -> 回款方式
+JOURNAL_TYPE_TO_METHOD = {"cash": "cash", "bank": "bank_transfer"}
+
 
 class CementPayment(models.Model):
     _name = "cement.payment"
@@ -19,6 +28,7 @@ class CementPayment(models.Model):
         "res.company",
         string="公司",
         compute="_compute_company_id",
+        store=True,
     )
     customer_id = fields.Many2one(
         "cement.customer",
@@ -416,6 +426,157 @@ class CementPayment(models.Model):
             "target": "current",
         }
 
+    # ------------------------------------------------------------------
+    # 反向同步：原生收款（account.payment） -> 回款（cement.payment）
+    #
+    # 之前只有「回款 -> 原生付款」单向同步，导致在发票上登记付款、
+    # 或在会计模块直接录入收款时，钱收到了但回款模块里查不到。
+    # ------------------------------------------------------------------
+    _native_sync_states = NATIVE_SYNC_STATES
+    _journal_type_to_method = JOURNAL_TYPE_TO_METHOD
+
+    @api.model
+    def _find_cement_customer_for_partner(self, partner):
+        """按联系人或其商业伙伴匹配水泥客户，找不到返回空记录集。"""
+        if not partner:
+            return self.env["cement.customer"]
+        partner_ids = (partner | partner.commercial_partner_id).ids
+        return (
+            self.env["cement.customer"]
+            .sudo()
+            .search([("partner_id", "in", partner_ids)], order="id", limit=1)
+        )
+
+    @api.model
+    def _prepare_cement_payment_vals_from_native(self, payment):
+        """根据原生收款构造回款 vals；客户无法匹配时返回 None。"""
+        customer = self._find_cement_customer_for_partner(payment.partner_id)
+        if not customer:
+            return None
+
+        invoices = payment.reconciled_invoice_ids.filtered(
+            lambda move: move.move_type == "out_invoice"
+            and move.state == "posted"
+        )
+        invoice = invoices[:1] if invoices else self.env["account.move"]
+
+        sale_order = self.env["sale.order"]
+        if invoice:
+            sale_order = invoice.invoice_line_ids.sale_line_ids.order_id.filtered(
+                lambda order: order.cement_customer_id == customer
+            )[:1]
+        if not sale_order:
+            sale_order = (
+                self.env["sale.order"]
+                .sudo()
+                .search(
+                    [
+                        ("cement_customer_id", "=", customer.id),
+                        ("state", "in", ("sale", "done")),
+                    ],
+                    order="date_order desc, id desc",
+                    limit=1,
+                )
+            )
+
+        salesperson = (
+            sale_order.user_id
+            or customer.sales_person
+            or payment.create_uid
+            or self.env.user
+        )
+        journal_type = payment.journal_id.type if payment.journal_id else False
+        return {
+            "customer_id": customer.id,
+            "invoice_id": invoice.id if invoice else False,
+            "sale_order_id": sale_order.id if sale_order else False,
+            "payment_date": payment.date or fields.Date.context_today(payment),
+            "amount": payment.amount,
+            "currency_id": payment.currency_id.id,
+            "payment_method": self._journal_type_to_method.get(journal_type, "other"),
+            "reference": payment.payment_reference or payment.name,
+            "salesperson_id": salesperson.id,
+            "notes": _("由 Odoo 原生收款 %s 自动同步", payment.name or ""),
+        }
+
+    @api.model
+    def _create_cement_payments_from_native(self, payments):
+        """把原生收款批量同步成已确认回款，返回 (创建数, 跳过数, 失败数)。"""
+        CementPayment = self.sudo()
+        created = skipped = failed = 0
+        for payment in payments:
+            if payment.cement_payment_id or payment.amount <= 0:
+                continue
+            if CementPayment.search(
+                [("native_payment_id", "=", payment.id)], limit=1
+            ):
+                continue
+            try:
+                with CementPayment.env.cr.savepoint():
+                    vals = CementPayment._prepare_cement_payment_vals_from_native(
+                        payment
+                    )
+                    if not vals:
+                        skipped += 1
+                        continue
+                    record = CementPayment.with_company(payment.company_id).create(
+                        vals
+                    )
+                    record.write(
+                        {"status": "confirmed", "native_payment_id": payment.id}
+                    )
+                    # 回写关联，方便后续核销/重算时快速去重。
+                    payment.sudo().cement_payment_id = record.id
+                    created += 1
+            except Exception:
+                # 单笔同步失败只回滚 savepoint，不阻塞原生收款过账，
+                # 稍后可用「同步原生收款」补录。
+                _logger.exception(
+                    "同步原生收款 %s 到回款模块失败", payment.display_name
+                )
+                failed += 1
+        return created, skipped, failed
+
+    @api.model
+    def action_sync_native_payments(self):
+        """手动补录：把已过账但尚未同步的原生收款补成回款记录。"""
+        payments = self.env["account.payment"].sudo().search(
+            [
+                ("payment_type", "=", "inbound"),
+                ("partner_type", "=", "customer"),
+                ("state", "in", list(self._native_sync_states)),
+                ("cement_payment_id", "=", False),
+                ("partner_id", "!=", False),
+            ]
+        )
+        if not payments:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("同步原生收款"),
+                    "message": _("没有需要同步的原生收款。"),
+                    "type": "info",
+                    "sticky": False,
+                },
+            }
+        created, skipped, failed = self._create_cement_payments_from_native(payments)
+        parts = [_("已同步 %s 笔回款记录。") % created]
+        if skipped:
+            parts.append(_("%s 笔未找到对应的水泥客户，已跳过。") % skipped)
+        if failed:
+            parts.append(_("%s 笔同步失败，详情请查看服务器日志。") % failed)
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("同步原生收款"),
+                "message": " ".join(parts),
+                "type": "info" if not failed else "warning",
+                "sticky": bool(failed),
+            },
+        }
+
 
 class AccountPayment(models.Model):
     _inherit = "account.payment"
@@ -436,3 +597,65 @@ class AccountPayment(models.Model):
             "A cement payment can only create one Odoo payment.",
         ),
     ]
+
+    def action_post(self):
+        # 原生收款过账后立即反向同步一条回款记录；
+        # 由回款模块确认产生的付款（cement_payment_id 已设置）会被自动跳过。
+        res = super().action_post()
+        if not self.env.context.get("skip_cement_payment_sync"):
+            try:
+                self._sync_posted_to_cement()
+            except Exception:
+                # 只记录日志，绝不回滚：收款过账本身不能被同步失败拖累。
+                _logger.exception(
+                    "原生收款过账后同步回款记录失败，稍后可用「同步原生收款」补录。"
+                )
+        return res
+
+    def _syncable_native_candidates(self):
+        return self.filtered(
+            lambda payment: payment.payment_type == "inbound"
+            and payment.partner_type == "customer"
+            and payment.state in NATIVE_SYNC_STATES
+            and payment.partner_id
+            and not payment.cement_payment_id
+        )
+
+    def _sync_posted_to_cement(self):
+        candidates = self._syncable_native_candidates()
+        if not candidates:
+            return
+        self.env["cement.payment"]._create_cement_payments_from_native(candidates)
+
+
+class AccountPartialReconcile(models.Model):
+    """在「登记付款」流程里，先过账、后核销发票。
+    挂在核销创建上，能保证同步时 reconciled_invoice_ids 已经有值，
+    回款记录才能正确关联发票和销售订单。"""
+
+    _inherit = "account.partial.reconcile"
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        reconciles = super().create(vals_list)
+        try:
+            reconciles._sync_cement_payments_from_reconcile()
+        except Exception:
+            # 只记录日志，绝不回滚：核销本身不能被同步失败拖累。
+            _logger.exception("核销后同步回款记录失败，稍后可用「同步原生收款」补录。")
+        return reconciles
+
+    def _sync_cement_payments_from_reconcile(self):
+        if self.env.context.get("skip_cement_payment_sync"):
+            return
+        Payment = self.env["account.payment"]
+        payments = Payment
+        for partial in self:
+            for line in partial.debit_move_id | partial.credit_move_id:
+                move = line.move_id
+                if not move:
+                    continue
+                payments |= Payment.search([("move_id", "=", move.id)], limit=1)
+        candidates = payments._syncable_native_candidates()
+        if candidates:
+            self.env["cement.payment"]._create_cement_payments_from_native(candidates)

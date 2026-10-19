@@ -124,12 +124,26 @@
         <field name="context">{'search_default_my_cement_payments': 1}</field>
     </record>
 
+    <!-- 手动补录：把已过账但未同步的原生收款补成回款记录 -->
+    <record id="action_cement_payment_sync" model="ir.actions.server">
+        <field name="name">同步原生收款</field>
+        <field name="model_id" ref="model_cement_payment"/>
+        <field name="code">action = model.action_sync_native_payments()</field>
+    </record>
+
     <menuitem id="menu_cement_payment_root" name="回款管理"
-              parent="menu_cement_sales_root" sequence="25"/>
+              parent="menu_cement_sales_root" sequence="25"
+              groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
     <menuitem id="menu_cement_payment_all" name="全部回款"
               parent="menu_cement_payment_root" action="action_cement_payment_all"
-              sequence="10"/>
+              sequence="10"
+              groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
     <menuitem id="menu_cement_payment_mine" name="我的回款"
               parent="menu_cement_payment_root" action="action_cement_payment_mine"
-              sequence="20"/>
+              sequence="20"
+              groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
+    <menuitem id="menu_cement_payment_sync" name="同步原生收款"
+              parent="menu_cement_payment_root" action="action_cement_payment_sync"
+              sequence="30"
+              groups="cement_sales.group_cement_sales_manager,account.group_account_invoice,account.group_account_readonly"/>
 </odoo>

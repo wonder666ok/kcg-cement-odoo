@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        定位相关菜单挂在 kcg_fleet_base 建的「运输档案」根菜单下，
+        车辆、司机、承运商、GPS 设备、定位、告警收在同一个应用里。
+    -->
+
+    <menuitem id="menu_gps_provider"
+              name="GPS 数据源"
+              parent="kcg_fleet_base.menu_kcg_fleet_root"
+              action="action_gps_provider"
+              sequence="50"
+              groups="kcg_fleet_base.group_kcg_fleet_manager"/>
+
+    <menuitem id="menu_gps_position"
+              name="定位记录"
+              parent="kcg_fleet_base.menu_kcg_fleet_root"
+              action="action_gps_position"
+              sequence="60"/>
+
+    <menuitem id="menu_gps_alert"
+              name="GPS 告警"
+              parent="kcg_fleet_base.menu_kcg_fleet_root"
+              sequence="70"/>
+
+    <menuitem id="menu_gps_alert_pending"
+              name="待处理"
+              parent="menu_gps_alert"
+              action="action_gps_alert_pending"
+              sequence="10"/>
+
+    <menuitem id="menu_gps_alert_all"
+              name="全部告警"
+              parent="menu_gps_alert"
+              action="action_gps_alert_all"
+              sequence="20"/>
+</odoo>

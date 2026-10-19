@@ -14,6 +14,8 @@
         ],
     },
     "data": [
+        "data/cement_uom_data.xml",
+        "security/cement_security.xml",
         "security/ir.model.access.csv",
         "views/cement_customer_views.xml",
         "views/cement_payment_views.xml",
@@ -21,6 +23,7 @@
         "views/cement_product_views.xml",
         "views/cement_sale_order_views.xml",
         "views/cement_delivery_views.xml",
+        "views/cement_prepaid_views.xml",
     ],
     "application": True,
     "installable": True,

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        定位数据的权限
+
+        原则：定位是机器产生的数据，不由人在界面上增删改。
+        - 车队调度员：只读定位与数据源配置，可处理告警（改状态、写处理说明）。
+        - 车队主管：可改定位记录（纠正明显错误），但仍不开放界面上的新增与删除。
+          入库走 sudo 提权，不受这里的 ACL 限制。
+
+        数据源上的 API 凭据字段另外用字段级 groups 挡住非主管用户，见 gps_provider.py。
+
+        分组沿用 kcg_fleet_base 定义的两个组，不在这里另建，避免同一批人要在两处授权。
+    -->
+
+    <!-- ==================== 多公司 ====================
+         不设 groups，属于全局规则，对所有用户无条件生效。
+    -->
+    <record id="rule_gps_provider_company" model="ir.rule">
+        <field name="name">GPS 数据源：多公司</field>
+        <field name="model_id" ref="model_gps_provider"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="rule_gps_position_company" model="ir.rule">
+        <field name="name">定位记录：多公司</field>
+        <field name="model_id" ref="model_gps_position"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="rule_gps_alert_company" model="ir.rule">
+        <field name="name">GPS 告警：多公司</field>
+        <field name="model_id" ref="model_gps_alert"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

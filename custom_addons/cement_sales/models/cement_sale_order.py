@@ -92,28 +92,6 @@ class SaleOrder(models.Model):
         store=True,
         groups="account.group_account_invoice,account.group_account_readonly",
     )
-    invoice_amount = fields.Monetary(
-        string="开票金额", currency_field="company_currency_id",
-        compute="_compute_cement_business_statistics", store=True,
-        groups="account.group_account_invoice,account.group_account_readonly",
-    )
-    paid_amount = fields.Monetary(
-        string="已收款金额", currency_field="company_currency_id",
-        compute="_compute_cement_business_statistics", store=True,
-        groups="account.group_account_invoice,account.group_account_readonly",
-    )
-    outstanding_amount = fields.Monetary(
-        string="未收款金额", currency_field="company_currency_id",
-        compute="_compute_cement_business_statistics", store=True,
-        groups="account.group_account_invoice,account.group_account_readonly",
-    )
-    payment_status = fields.Selection(
-        selection=[
-            ("not_invoiced", "未开票"), ("not_paid", "未付款"),
-            ("partial", "部分付款"), ("paid", "已付款"), ("overdue", "已逾期"),
-        ], string="付款状态", compute="_compute_cement_business_statistics",
-        store=True, groups="account.group_account_invoice,account.group_account_readonly",
-    )
     cement_payment_count = fields.Integer(
         string="已收款笔数",
         compute="_compute_cement_business_statistics",
@@ -134,6 +112,30 @@ class SaleOrder(models.Model):
         compute="_compute_cement_business_statistics",
         store=True,
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        orders = super().create(vals_list)
+        orders._sync_cement_customer_partner()
+        return orders
+
+    def write(self, vals):
+        res = super().write(vals)
+        if {"partner_id", "cement_customer_id"} & set(vals):
+            self._sync_cement_customer_partner()
+        return res
+
+    def _sync_cement_customer_partner(self):
+        """把订单上的 Odoo 联系人回填到水泥客户档案。
+
+        在订单里新建/选择联系人时，水泥客户档案（cement.customer）的 partner_id
+        往往还是空的，导致后续开票、回款无法按联系人匹配到客户。这里在订单
+        保存/变更时自动补齐，已有关联的客户不会被覆盖。
+        """
+        for order in self:
+            customer = order.cement_customer_id
+            if customer and not customer.partner_id and order.partner_id:
+                customer.sudo().write({"partner_id": order.partner_id.id})
 
     @api.depends(
         "amount_total",
@@ -245,9 +247,6 @@ class SaleOrder(models.Model):
             order.cement_invoiced_amount = invoiced_amount
             order.cement_due_amount = due_amount
             order.cement_paid_amount = max(invoiced_amount - due_amount, 0.0)
-            order.invoice_amount = invoiced_amount
-            order.outstanding_amount = due_amount
-            order.paid_amount = max(invoiced_amount - due_amount, 0.0)
             order.cement_payment_count = len(payments)
             order.cement_last_payment_date = max(payments.mapped("date"), default=False)
             if not invoices:
@@ -260,7 +259,6 @@ class SaleOrder(models.Model):
                 order.cement_payment_state = "partial"
             else:
                 order.cement_payment_state = "not_paid"
-            order.payment_status = order.cement_payment_state
 
             order.cement_delivery_quantity = sum(
                 order.delivery_ids.filtered(
@@ -358,8 +356,26 @@ class SaleOrder(models.Model):
             utc_midnight(next_month_start)
         )
         customer_model = self.env["cement.customer"].with_context(active_test=False)
-        customers = customer_model.search([], order="name, id")
+        # 按当前公司过滤客户，与下面按 company_id 过滤销售订单的口径保持一致；
+        # 否则多公司环境下「客户总数」会跨公司累加而「销售额」只算当前公司。
+        customers = customer_model.search(
+            [("company_id", "=", company.id)], order="name, id"
+        )
         customer_by_id = {customer.id: customer for customer in customers}
+
+        # 记录规则已经把 customers 收敛到当前用户可见范围；销售侧的订单聚合必须用
+        # 同一范围，否则「销售额 / 订单数」等 KPI 会把其他销售员的数据算进来。
+        has_accounting_access = self.env.user.has_group(
+            "account.group_account_invoice"
+        ) or self.env.user.has_group("account.group_account_readonly")
+        sees_all_customers = has_accounting_access or self.env.user.has_group(
+            "cement_sales.group_cement_sales_manager"
+        )
+        order_scope_domain = (
+            []
+            if sees_all_customers
+            else [("cement_customer_id", "in", customers.ids)]
+        )
 
         reps = {}
 
@@ -444,7 +460,7 @@ class SaleOrder(models.Model):
             ("date_order", ">=", date_from_datetime),
             ("date_order", "<", date_to_datetime),
         ]
-        period_orders = self.search(company_domain + period_domain)
+        period_orders = self.search(company_domain + order_scope_domain + period_domain)
         quotations = period_orders.filtered(
             lambda order: order.state in ("draft", "sent")
         )
@@ -471,6 +487,7 @@ class SaleOrder(models.Model):
 
         monthly_orders = self.search(
             company_domain
+            + order_scope_domain
             + [
                 ("state", "in", ("sale", "done")),
                 ("date_order", ">=", month_start_datetime),
@@ -483,7 +500,7 @@ class SaleOrder(models.Model):
         month_sales_bags = sum(
             self.env["sale.order.line"]
             .search([("order_id", "in", monthly_orders.ids), ("display_type", "=", False)])
-            .mapped("bag_count")
+            .mapped("product_uom_qty")
         ) if monthly_orders else 0.0
 
         def shift_month(value, offset):
@@ -505,6 +522,7 @@ class SaleOrder(models.Model):
             }
         trend_orders = self.search(
             company_domain
+            + order_scope_domain
             + [
                 ("state", "in", ("sale", "done")),
                 ("date_order", ">=", trend_start_datetime),
@@ -530,7 +548,7 @@ class SaleOrder(models.Model):
                 ).date()
                 bucket = trend_rows_by_key.get(local_order_date.strftime("%Y-%m"))
                 if bucket:
-                    bucket["sales_bags"] += line.bag_count or 0.0
+                    bucket["sales_bags"] += line.product_uom_qty or 0.0
 
         sales_quantity = 0.0
         sales_bags = 0.0
@@ -541,13 +559,14 @@ class SaleOrder(models.Model):
                 [("order_id", "in", confirmed_orders.ids), ("display_type", "=", False)]
             )
             for line in order_lines:
-                quantity = line.product_uom_qty or 0.0
-                bags = line.bag_count or 0.0
-                sales_quantity += quantity
+                # 主单位已是「袋」：数量就是袋数，吨数由主单位换算得出，两者不再重复。
+                bags = line.product_uom_qty or 0.0
+                tons = line.cement_weight_tons or 0.0
+                sales_quantity += tons
                 sales_bags += bags
                 order = line.order_id
                 rep = ensure_rep(order.user_id)
-                rep["sales_quantity"] += quantity
+                rep["sales_quantity"] += tons
                 rep["sales_bags"] += bags
                 grade = line.product_id.product_tmpl_id.cement_grade or "其他"
                 grade_totals.setdefault(
@@ -559,7 +578,7 @@ class SaleOrder(models.Model):
                         "order_ids": set(),
                     },
                 )
-                grade_totals[grade]["quantity"] += quantity
+                grade_totals[grade]["quantity"] += tons
                 grade_totals[grade]["bags"] += bags
                 grade_totals[grade]["order_ids"].add(order.id)
                 order_grade_weights.setdefault(order.id, {})
@@ -590,12 +609,12 @@ class SaleOrder(models.Model):
                 ("sale_order_id.company_id", "=", company.id),
             ]
         )
-        delivered_quantity = sum(deliveries.mapped("quantity"))
-        delivered_bags = sum(deliveries.mapped("bag_count"))
+        delivered_bags = sum(deliveries.mapped("quantity"))
+        delivered_quantity = sum(deliveries.mapped("weight_tons"))
         for delivery in deliveries:
             customer_id = delivery.customer_id.id
             if customer_id in customer_totals:
-                customer_totals[customer_id]["delivered_quantity"] += delivery.quantity
+                customer_totals[customer_id]["delivered_quantity"] += delivery.weight_tons
 
         pending_deliveries = self.env["cement.delivery"].search(
             [
@@ -612,7 +631,7 @@ class SaleOrder(models.Model):
                 "order": delivery.sale_order_id.name,
                 "customer": delivery.customer_id.name,
                 "grade": delivery.cement_grade or "其他",
-                "quantity": delivery.bag_count or delivery.quantity or 0.0,
+                "quantity": delivery.quantity or 0.0,
                 "date": fields.Date.to_string(delivery.delivery_date)
                 if delivery.delivery_date
                 else False,
@@ -633,9 +652,6 @@ class SaleOrder(models.Model):
         for followup in followups:
             ensure_rep(followup.salesperson_id)["followup_count"] += 1
 
-        has_accounting_access = self.env.user.has_group(
-            "account.group_account_invoice"
-        ) or self.env.user.has_group("account.group_account_readonly")
         invoice_amount = 0.0
         reconciled_payment_amount = 0.0
         receivable_amount = 0.0
@@ -925,7 +941,31 @@ class SaleOrder(models.Model):
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
-    bag_count = fields.Float(string="袋数")
+    cement_weight_tons = fields.Float(
+        string="吨数",
+        compute="_compute_cement_weight_tons",
+        digits=(16, 3),
+        help="把订单行的数量按主单位折算成吨，仅用于显示与对账：主单位为「袋」时 20 袋 = 1 吨。"
+             "订单金额只由「数量 × 单价」决定，与这一列无关。",
+    )
+
+    @api.depends("product_uom_qty", "product_uom")
+    def _compute_cement_weight_tons(self):
+        ton_uom = self.env.ref("uom.product_uom_ton", raise_if_not_found=False)
+        for line in self:
+            uom = line.product_uom
+            if (
+                not ton_uom
+                or not uom
+                or not line.product_uom_qty
+                or uom.category_id != ton_uom.category_id
+            ):
+                # 主单位不是重量单位（例如按「单位/件」卖）时没有吨数可言。
+                line.cement_weight_tons = 0.0
+                continue
+            line.cement_weight_tons = uom._compute_quantity(
+                line.product_uom_qty, ton_uom, round=False
+            )
 
 
 class AccountPayment(models.Model):

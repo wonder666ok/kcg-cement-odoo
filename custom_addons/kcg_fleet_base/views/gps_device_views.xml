@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gps_device_list" model="ir.ui.view">
+        <field name="name">gps.device.list</field>
+        <field name="model">gps.device</field>
+        <field name="arch" type="xml">
+            <list string="GPS 设备">
+                <field name="name" string="设备编号"/>
+                <field name="vehicle_plate" optional="show"/>
+                <field name="device_model" optional="show"/>
+                <field name="sim_number" optional="hide"/>
+                <field name="manufacturer" optional="hide"/>
+                <field name="install_date" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-info="state == 'stock'"
+                       decoration-danger="state == 'faulty'"
+                       decoration-muted="state == 'retired'"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_gps_device_form" model="ir.ui.view">
+        <field name="name">gps.device.form</field>
+        <field name="model">gps.device</field>
+        <field name="arch" type="xml">
+            <form string="GPS 设备">
+                <sheet>
+                    <field name="active" invisible="1"/>
+                    <widget name="web_ribbon" title="已归档" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name" string="设备编号"/>
+                        <h1><field name="name" placeholder="终端编号或 IMEI"/></h1>
+                    </div>
+                    <group>
+                        <group name="left">
+                            <field name="vehicle_id"/>
+                            <field name="state"/>
+                            <field name="install_date"/>
+                            <field name="removal_date"/>
+                        </group>
+                        <group name="right">
+                            <field name="device_model"/>
+                            <field name="manufacturer"/>
+                            <field name="serial_number"/>
+                            <field name="sim_number"/>
+                            <field name="firmware_version"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group name="other">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="备注" name="notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gps_device_search" model="ir.ui.view">
+        <field name="name">gps.device.search</field>
+        <field name="model">gps.device</field>
+        <field name="arch" type="xml">
+            <search string="GPS 设备">
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="serial_number"/>
+                <field name="sim_number"/>
+                <filter name="filter_active" string="已装车" domain="[('state', '=', 'active')]"/>
+                <filter name="filter_stock" string="库存未装" domain="[('state', '=', 'stock')]"/>
+                <filter name="filter_faulty" string="故障" domain="[('state', '=', 'faulty')]"/>
+                <separator/>
+                <filter name="filter_unassigned" string="未绑定车辆" domain="[('vehicle_id', '=', False)]"/>
+                <filter name="filter_inactive" string="已归档" domain="[('active', '=', False)]"/>
+                <group expand="0" string="分组">
+                    <filter name="group_state" string="状态" context="{'group_by': 'state'}"/>
+                    <filter name="group_vehicle" string="车辆" context="{'group_by': 'vehicle_id'}"/>
+                    <filter name="group_manufacturer" string="厂商" context="{'group_by': 'manufacturer'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gps_device" model="ir.actions.act_window">
+        <field name="name">GPS 设备</field>
+        <field name="res_model">gps.device</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_gps_device_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">先建一个 GPS 设备</p>
+            <p>把车载终端的编号登记进来并绑定到车辆。编号必须与定位平台上登记的一致，
+               否则轨迹对不上车。</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_transport_vehicle_list" model="ir.ui.view">
+        <field name="name">transport.vehicle.list</field>
+        <field name="model">transport.vehicle</field>
+        <field name="arch" type="xml">
+            <list string="车辆"
+                  decoration-danger="inspection_state == 'expired' or insurance_state == 'expired' or road_license_state == 'expired'"
+                  decoration-warning="inspection_state == 'soon' or insurance_state == 'soon' or road_license_state == 'soon'">
+                <field name="name" string="车牌号"/>
+                <field name="vehicle_type" optional="show"/>
+                <field name="carrier_id" optional="show"/>
+                <field name="driver_id" optional="show"/>
+                <field name="capacity_tons" optional="show"/>
+                <field name="capacity_bags" optional="show"/>
+                <field name="current_gps_device_id" optional="hide"/>
+                <field name="insurance_expiry" optional="hide"/>
+                <field name="inspection_expiry" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'available'"
+                       decoration-info="state == 'in_transit'"
+                       decoration-warning="state == 'maintenance'"
+                       decoration-muted="state == 'retired'"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_transport_vehicle_kanban" model="ir.ui.view">
+        <field name="name">transport.vehicle.kanban</field>
+        <field name="model">transport.vehicle</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <field name="name" class="fw-bold fs-5"/>
+                                <div class="text-muted"><field name="vehicle_type"/></div>
+                            </div>
+                            <field name="state" widget="label_selection"
+                                   options="{'classes': {'available': 'success', 'in_transit': 'info', 'maintenance': 'warning', 'retired': 'muted'}}"/>
+                        </div>
+                        <div class="mt-1">
+                            <span class="text-muted">承运商：</span><field name="carrier_id"/>
+                        </div>
+                        <div>
+                            <span class="text-muted">司机：</span><field name="driver_id"/>
+                        </div>
+                        <div>
+                            <span class="text-muted">核定：</span><field name="capacity_tons"/>
+                            <span class="text-muted">吨</span>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_transport_vehicle_form" model="ir.ui.view">
+        <field name="name">transport.vehicle.form</field>
+        <field name="model">transport.vehicle</field>
+        <field name="arch" type="xml">
+            <form string="车辆">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_gps_devices" type="object" class="oe_stat_button" icon="fa-map-marker"
+                                invisible="not gps_device_count">
+                            <field name="gps_device_count" widget="statinfo" string="GPS 设备"/>
+                        </button>
+                    </div>
+                    <field name="active" invisible="1"/>
+                    <field name="insurance_state" invisible="1"/>
+                    <field name="inspection_state" invisible="1"/>
+                    <field name="road_license_state" invisible="1"/>
+                    <widget name="web_ribbon" title="已归档" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name" string="车牌号"/>
+                        <h1><field name="name" placeholder="例如：GW2222"/></h1>
+                    </div>
+                    <group>
+                        <group name="left">
+                            <field name="vehicle_type"/>
+                            <field name="carrier_id"/>
+                            <field name="driver_id"/>
+                            <field name="state"/>
+                        </group>
+                        <group name="right">
+                            <field name="capacity_tons"/>
+                            <field name="bag_weight_kg"/>
+                            <field name="capacity_bags" readonly="1"/>
+                            <field name="odometer_km"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group name="vehicle_info" string="车辆信息">
+                            <field name="brand_model"/>
+                            <field name="manufacture_year"/>
+                            <field name="vin"/>
+                            <field name="engine_no"/>
+                        </group>
+                        <group name="other" string="其他">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="到期提醒" name="expiry">
+                            <group>
+                                <group name="expiry_left">
+                                    <field name="insurance_expiry"/>
+                                    <field name="insurance_state" widget="badge"
+                                           decoration-danger="insurance_state == 'expired'"
+                                           decoration-warning="insurance_state == 'soon'"
+                                           decoration-success="insurance_state == 'valid'"
+                                           decoration-muted="insurance_state == 'unknown'"/>
+                                    <field name="inspection_expiry"/>
+                                    <field name="inspection_state" widget="badge"
+                                           decoration-danger="inspection_state == 'expired'"
+                                           decoration-warning="inspection_state == 'soon'"
+                                           decoration-success="inspection_state == 'valid'"
+                                           decoration-muted="inspection_state == 'unknown'"/>
+                                </group>
+                                <group name="expiry_right">
+                                    <field name="road_license_expiry"/>
+                                    <field name="road_license_state" widget="badge"
+                                           decoration-danger="road_license_state == 'expired'"
+                                           decoration-warning="road_license_state == 'soon'"
+                                           decoration-success="road_license_state == 'valid'"
+                                           decoration-muted="road_license_state == 'unknown'"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="GPS 设备" name="devices">
+                            <field name="gps_device_ids">
+                                <list>
+                                    <field name="name" string="设备编号"/>
+                                    <field name="device_model"/>
+                                    <field name="sim_number"/>
+                                    <field name="install_date"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="备注" name="notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_transport_vehicle_search" model="ir.ui.view">
+        <field name="name">transport.vehicle.search</field>
+        <field name="model">transport.vehicle</field>
+        <field name="arch" type="xml">
+            <search string="车辆">
+                <field name="name" string="车牌号"/>
+                <field name="driver_id"/>
+                <field name="carrier_id"/>
+                <field name="current_gps_device_id"/>
+                <filter name="filter_available" string="可用" domain="[('state', '=', 'available')]"/>
+                <filter name="filter_in_transit" string="运输中" domain="[('state', '=', 'in_transit')]"/>
+                <filter name="filter_maintenance" string="维修中" domain="[('state', '=', 'maintenance')]"/>
+                <separator/>
+                <filter name="filter_expiry_problem" string="证照有问题"
+                        domain="['|', '|', ('inspection_state', 'in', ('soon', 'expired')),
+                                 ('insurance_state', 'in', ('soon', 'expired')),
+                                 ('road_license_state', 'in', ('soon', 'expired'))]"/>
+                <filter name="filter_no_gps" string="未装 GPS"
+                        domain="[('current_gps_device_id', '=', False)]"/>
+                <separator/>
+                <filter name="filter_inactive" string="已归档" domain="[('active', '=', False)]"/>
+                <group expand="0" string="分组">
+                    <filter name="group_state" string="状态" context="{'group_by': 'state'}"/>
+                    <filter name="group_type" string="车辆类型" context="{'group_by': 'vehicle_type'}"/>
+                    <filter name="group_carrier" string="承运商" context="{'group_by': 'carrier_id'}"/>
+                    <filter name="group_company" string="公司" context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_transport_vehicle" model="ir.actions.act_window">
+        <field name="name">车辆</field>
+        <field name="res_model">transport.vehicle</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_transport_vehicle_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">先建一辆车</p>
+            <p>填上车牌号、承运商和核定载重。系统会自动忽略车牌里的空格与大小写差异，
+               所以「GW2222」和「GW 2222」会被判定为同一辆车，不会再各建一条档案。</p>
+        </field>
+    </record>
+</odoo>

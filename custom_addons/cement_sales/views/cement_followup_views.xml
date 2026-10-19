@@ -89,7 +89,9 @@
     </record>
 
     <menuitem id="menu_cement_followup_all" name="跟进记录"
-              parent="menu_cement_sales_root" action="cement_followup_action" sequence="20"/>
+              parent="menu_cement_sales_root" action="cement_followup_action" sequence="20"
+              groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
     <menuitem id="menu_cement_followup_mine" name="我的跟进"
-              parent="menu_cement_sales_root" action="action_cement_my_followups" sequence="21"/>
+              parent="menu_cement_sales_root" action="action_cement_my_followups" sequence="21"
+              groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
 </odoo>

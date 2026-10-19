@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_transport_carrier_list" model="ir.ui.view">
+        <field name="name">transport.carrier.list</field>
+        <field name="model">transport.carrier</field>
+        <field name="arch" type="xml">
+            <list string="承运商">
+                <field name="name"/>
+                <field name="code" optional="show"/>
+                <field name="is_own_fleet" widget="boolean_toggle"/>
+                <field name="contact_person" optional="show"/>
+                <field name="phone" optional="show"/>
+                <field name="vehicle_count" optional="show"/>
+                <field name="driver_count" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_transport_carrier_form" model="ir.ui.view">
+        <field name="name">transport.carrier.form</field>
+        <field name="model">transport.carrier</field>
+        <field name="arch" type="xml">
+            <form string="承运商">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_vehicles" type="object" class="oe_stat_button" icon="fa-truck">
+                            <field name="vehicle_count" widget="statinfo" string="车辆"/>
+                        </button>
+                        <button name="action_view_drivers" type="object" class="oe_stat_button" icon="fa-user">
+                            <field name="driver_count" widget="statinfo" string="司机"/>
+                        </button>
+                    </div>
+                    <field name="active" invisible="1"/>
+                    <widget name="web_ribbon" title="已归档" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name" string="承运商名称"/>
+                        <h1><field name="name" placeholder="例如：KCG 自有车队"/></h1>
+                    </div>
+                    <group>
+                        <group name="left">
+                            <field name="code"/>
+                            <field name="is_own_fleet"/>
+                            <field name="partner_id"/>
+                            <field name="registration_no"/>
+                        </group>
+                        <group name="right">
+                            <field name="contact_person"/>
+                            <field name="phone"/>
+                            <field name="email"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="address" placeholder="用于运费对账与纸质单据抬头"/>
+                    </group>
+                    <notebook>
+                        <page string="车辆" name="vehicles">
+                            <field name="vehicle_ids">
+                                <list>
+                                    <field name="name" string="车牌号"/>
+                                    <field name="vehicle_type"/>
+                                    <field name="capacity_tons"/>
+                                    <field name="driver_id"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="司机" name="drivers">
+                            <field name="driver_ids">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="phone"/>
+                                    <field name="license_type"/>
+                                    <field name="license_expiry"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="备注" name="notes">
+                            <field name="notes" placeholder="合作条款、结算周期等"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_transport_carrier_search" model="ir.ui.view">
+        <field name="name">transport.carrier.search</field>
+        <field name="model">transport.carrier</field>
+        <field name="arch" type="xml">
+            <search string="承运商">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="contact_person"/>
+                <field name="phone"/>
+                <filter name="filter_own_fleet" string="自有车队" domain="[('is_own_fleet', '=', True)]"/>
+                <filter name="filter_outsourced" string="外协承运商" domain="[('is_own_fleet', '=', False)]"/>
+                <separator/>
+                <filter name="filter_inactive" string="已归档" domain="[('active', '=', False)]"/>
+                <group expand="0" string="分组">
+                    <filter name="group_own_fleet" string="自有/外协" context="{'group_by': 'is_own_fleet'}"/>
+                    <filter name="group_company" string="公司" context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_transport_carrier" model="ir.actions.act_window">
+        <field name="name">承运商</field>
+        <field name="res_model">transport.carrier</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_transport_carrier_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">先建一个承运商</p>
+            <p>把「KCG 自有车队」和各家外协运输公司都建成档案，车辆与司机再挂到承运商下面。</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            「司机」联系人分类标签。
+
+            刻意不写 company_id：XML 数据由超级用户加载，env.company 会解析成
+            公司 1（demo 公司），而业务实际在公司 2。res.partner.category 默认
+            全公司共享，正好满足"联系人里把司机单独分成一类"的需求。
+
+            司机档案（transport.driver）创建时会自动给对应联系人打上这个标签，
+            存量司机由 post_init_hook 补齐。
+        -->
+        <record id="res_partner_category_driver" model="res.partner.category">
+            <field name="name">司机</field>
+        </record>
+
+        <!--
+            自有车队承运商。
+
+            现有交付单上有 4 条记录的承运商写的是 "KCG"，另外 3 条为空——
+            空的那几条其实是自有车临时派的，没有登记承运商。
+
+            这里同样不写 company_id，理由同上，company_id 由播种脚本显式写入。
+        -->
+        <record id="carrier_kcg_own_fleet" model="transport.carrier">
+            <field name="name">KCG 自有车队</field>
+            <field name="code">KCG-OWN</field>
+            <field name="is_own_fleet" eval="True"/>
+            <field name="notes">公司自有车辆与司机，运费属内部成本，不产生对外应付。</field>
+        </record>
+    </data>
+</odoo>

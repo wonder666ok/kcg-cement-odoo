@@ -10,6 +10,13 @@ class CementCustomer(models.Model):
     _order = "name"
 
     name = fields.Char(string="客户名称", required=True)
+    company_id = fields.Many2one(
+        "res.company",
+        string="公司",
+        required=True,
+        index=True,
+        default=lambda self: self.env.company,
+    )
     phone = fields.Char(string="电话")
     email = fields.Char(string="邮箱")
     company_name = fields.Char(string="公司名称")
@@ -164,24 +171,6 @@ class CementCustomer(models.Model):
         search="_search_overdue_invoice_count",
         groups="account.group_account_invoice,account.group_account_readonly",
     )
-    invoice_amount = fields.Monetary(
-        string="累计开票金额",
-        currency_field="financial_currency_id",
-        compute="_compute_financial_statistics",
-        groups="account.group_account_invoice,account.group_account_readonly",
-    )
-    payment_amount = fields.Monetary(
-        string="已确认回款金额",
-        currency_field="financial_currency_id",
-        compute="_compute_financial_statistics",
-        groups="account.group_account_invoice,account.group_account_readonly",
-    )
-    outstanding_amount = fields.Monetary(
-        string="未收款金额",
-        currency_field="financial_currency_id",
-        compute="_compute_financial_statistics",
-        groups="account.group_account_invoice,account.group_account_readonly",
-    )
     overdue_amount = fields.Monetary(
         string="逾期未收款金额",
         currency_field="financial_currency_id",
@@ -238,6 +227,7 @@ class CementCustomer(models.Model):
         "sale_order_ids.date_order",
         "sale_order_ids.currency_id",
         "sale_order_ids.company_id",
+        "company_id",
     )
     def _compute_sales_statistics(self):
         statistics = {
@@ -252,9 +242,13 @@ class CementCustomer(models.Model):
         orders = self.env["sale.order"].search(
             [("cement_customer_id", "in", self.ids)]
         ) if self.ids else self.env["sale.order"]
-        target_currency = self.env.company.currency_id
+        fallback_currency = self.env.company.currency_id
         for order in orders:
-            values = statistics[order.cement_customer_id.id]
+            customer = order.cement_customer_id
+            # 多公司下只统计客户所属公司的订单，否则会跨公司混算销售额。
+            if customer.company_id and order.company_id != customer.company_id:
+                continue
+            values = statistics[customer.id]
             values["quotation_count"] += 1
             if order.date_order and (
                 not values["last_order_date"]
@@ -265,7 +259,7 @@ class CementCustomer(models.Model):
                 values["confirmed_order_count"] += 1
                 values["total_sales_amount"] += order.currency_id._convert(
                     order.amount_total,
-                    target_currency,
+                    customer.company_id.currency_id or fallback_currency,
                     order.company_id,
                     fields.Date.to_date(order.date_order)
                     or fields.Date.context_today(order),
@@ -273,7 +267,9 @@ class CementCustomer(models.Model):
 
         for customer in self:
             values = statistics[customer.id]
-            customer.sales_currency_id = target_currency
+            customer.sales_currency_id = (
+                customer.company_id.currency_id or fallback_currency
+            )
             customer.quotation_count = values["quotation_count"]
             customer.confirmed_order_count = values["confirmed_order_count"]
             customer.total_sales_amount = values["total_sales_amount"]
@@ -317,35 +313,48 @@ class CementCustomer(models.Model):
         "payment_ids.payment_date",
         "payment_ids.amount",
         "payment_ids.currency_id",
-        "payment_ids.sale_order_id.company_id",
+        "payment_ids.company_id",
+        "company_id",
     )
     def _compute_cement_payment_statistics(self):
-        default_currency = self.env.company.currency_id
+        fallback_currency = self.env.company.currency_id
         for customer in self:
+            target_currency = customer.company_id.currency_id or fallback_currency
             confirmed_payments = customer.payment_ids.filtered(
                 lambda payment: payment.status == "confirmed"
             )
-            currencies = confirmed_payments.mapped("currency_id")
-            currency_ids = set(currencies.ids)
-            multiple_currencies = len(currency_ids) > 1
-            currency = currencies if len(currency_ids) == 1 else default_currency
-            customer.payment_currency_id = currency
+            currency_ids = set(confirmed_payments.mapped("currency_id").ids)
             customer.payment_record_count = len(customer.payment_ids)
             customer.confirmed_payment_count = len(confirmed_payments)
             customer.last_cement_payment_date = max(
                 confirmed_payments.mapped("payment_date"), default=False
             )
-            customer.has_multiple_payment_currencies = multiple_currencies
+            customer.has_multiple_payment_currencies = len(currency_ids) > 1
             if len(currency_ids) == 1:
-                customer.payment_currency_id = currencies
-                customer.total_payment_amount = sum(confirmed_payments.mapped("amount"))
-            elif multiple_currencies:
-                # cement.payment has no company field; do not guess conversion context.
-                customer.payment_currency_id = default_currency
-                customer.total_payment_amount = 0.0
-            else:
-                customer.payment_currency_id = default_currency
-                customer.total_payment_amount = 0.0
+                # 单一币种：按原币种直接累加，不做折算。
+                customer.payment_currency_id = confirmed_payments.mapped(
+                    "currency_id"
+                )[:1]
+                customer.total_payment_amount = sum(
+                    confirmed_payments.mapped("amount")
+                )
+                continue
+            # 多币种或暂无回款：逐笔按各自所属公司折算到客户所属公司的本位币后累加。
+            customer.payment_currency_id = target_currency
+            total = 0.0
+            for payment in confirmed_payments:
+                payment_company = (
+                    payment.company_id or customer.company_id or self.env.company
+                )
+                if not payment.payment_date:
+                    continue
+                total += payment.currency_id._convert(
+                    payment.amount,
+                    target_currency,
+                    payment_company,
+                    payment.payment_date,
+                )
+            customer.total_payment_amount = total
 
     @api.depends("sale_order_ids.picking_ids")
     def _compute_picking_count(self):
@@ -406,8 +415,6 @@ class CementCustomer(models.Model):
         "partner_id.invoice_ids.reconciled_payment_ids.date",
         "partner_id.invoice_ids.reconciled_payment_ids.state",
         "partner_id.invoice_ids.reconciled_payment_ids.payment_method_line_id",
-        "payment_ids.status", "payment_ids.amount", "payment_ids.currency_id",
-        "payment_ids.payment_date", "payment_ids.sale_order_id.company_id",
     )
     def _compute_financial_statistics(self):
         invoices = self.env["account.move"]
@@ -440,8 +447,8 @@ class CementCustomer(models.Model):
             )
             currency_ids = set(posted_invoices.mapped("currency_id").ids)
             multiple_currencies = len(currency_ids) > 1
-            # All customer totals are converted to the active company's base currency.
-            currency = self.env.company.currency_id
+            # 客户所属公司不一定是当前公司，统一折算到客户所属公司的本位币。
+            currency = customer.company_id.currency_id or self.env.company.currency_id
 
             overdue_invoices = posted_invoices.filtered(
                 lambda invoice: invoice.invoice_date_due
@@ -480,26 +487,6 @@ class CementCustomer(models.Model):
                 and payment.payment_type == "inbound"
                 and payment.partner_type == "customer"
             )
-            business_payments = customer.payment_ids.filtered(
-                lambda payment: payment.status == "confirmed"
-            )
-            business_payment_amount = 0.0
-            for payment in business_payments:
-                payment_company = (
-                    payment.sale_order_id.company_id
-                    if payment.sale_order_id
-                    else False
-                )
-                payment_date = payment.payment_date
-                if not payment_company or not payment_date:
-                    continue
-                business_payment_amount += payment.currency_id._convert(
-                    payment.amount,
-                    currency,
-                    payment_company,
-                    payment_date,
-                )
-
             customer.invoice_ids = customer_invoices
             customer.invoice_count = len(posted_invoices)
             customer.account_payment_ids = payments
@@ -509,12 +496,9 @@ class CementCustomer(models.Model):
             customer.has_multiple_invoice_currencies = multiple_currencies
             # Never add nominal values from different currencies together.
             customer.total_invoiced_amount = invoiced_amount
-            customer.invoice_amount = invoiced_amount
             customer.total_paid_amount = paid_amount
             customer.total_due_amount = due_amount
-            customer.outstanding_amount = due_amount
             customer.overdue_amount = overdue_amount
-            customer.payment_amount = business_payment_amount
             if not posted_invoices:
                 customer.receivable_status = "none"
             elif not any(invoice.amount_residual > 0 for invoice in posted_invoices):

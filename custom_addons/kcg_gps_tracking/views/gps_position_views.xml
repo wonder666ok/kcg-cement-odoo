@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gps_position_list" model="ir.ui.view">
+        <field name="name">gps.position.list</field>
+        <field name="model">gps.position</field>
+        <field name="arch" type="xml">
+            <!--
+                create/delete 全关：定位是机器写进来的，界面上不该手工造点或删点。
+                edit 保留给车队主管纠正明显错误（ACL 里主管才有写权限）。
+            -->
+            <list string="定位记录" create="false" delete="false" edit="false">
+                <field name="position_datetime"/>
+                <field name="vehicle_id"/>
+                <field name="device_id" optional="show"/>
+                <field name="speed_kmh"/>
+                <field name="ignition" optional="show"/>
+                <field name="address" optional="show"/>
+                <field name="latitude" optional="hide"/>
+                <field name="longitude" optional="hide"/>
+                <field name="heading" optional="hide"/>
+                <field name="odometer_km" optional="hide"/>
+                <field name="provider_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_gps_position_form" model="ir.ui.view">
+        <field name="name">gps.position.form</field>
+        <field name="model">gps.position</field>
+        <field name="arch" type="xml">
+            <form string="定位点" create="false" delete="false">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_in_maps" type="object"
+                                class="oe_stat_button" icon="fa-map-o"
+                                string="在地图中查看"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="position_datetime" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group name="left">
+                            <field name="vehicle_id" readonly="1"/>
+                            <field name="device_id" readonly="1"/>
+                            <field name="provider_id" readonly="1"/>
+                            <field name="source" readonly="1"/>
+                        </group>
+                        <group name="right">
+                            <field name="latitude"/>
+                            <field name="longitude"/>
+                            <field name="speed_kmh"/>
+                            <field name="heading"/>
+                            <field name="ignition"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group name="extra">
+                            <field name="altitude"/>
+                            <field name="odometer_km"/>
+                            <field name="address"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="关联告警" name="alerts">
+                            <field name="alert_ids">
+                                <list create="false" delete="false">
+                                    <field name="alert_datetime"/>
+                                    <field name="alert_type"/>
+                                    <field name="severity"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gps_position_search" model="ir.ui.view">
+        <field name="name">gps.position.search</field>
+        <field name="model">gps.position</field>
+        <field name="arch" type="xml">
+            <search string="定位记录">
+                <field name="vehicle_id"/>
+                <field name="device_id"/>
+                <field name="provider_id"/>
+                <field name="address"/>
+                <!--
+                    定位表会涨到几千万行，不设默认时间范围的话，列表一打开就要对全表做
+                    COUNT 来算分页，页面会长时间空白。下面这个「最近 7 天」由 action 的
+                    context 默认勾上（search_default_filter_last_7_days）。
+                -->
+                <filter name="filter_last_7_days" string="最近 7 天"
+                        domain="[('position_datetime', '&gt;=', (context_today() - relativedelta(days=6)).strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_today" string="今天"
+                        domain="[('position_datetime', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="filter_moving" string="行驶中" domain="[('ignition', '=', True), ('speed_kmh', '&gt;', 0)]"/>
+                <filter name="filter_overspeed" string="超过 60km/h" domain="[('speed_kmh', '&gt;', 60)]"/>
+                <separator/>
+                <filter name="filter_by_date" string="定位时间" date="position_datetime" default_period="month"/>
+                <group expand="0" string="分组">
+                    <filter name="group_vehicle" string="车辆" context="{'group_by': 'vehicle_id'}"/>
+                    <filter name="group_device" string="设备" context="{'group_by': 'device_id'}"/>
+                    <filter name="group_datetime" string="日期" context="{'group_by': 'position_datetime:day'}"/>
+                    <filter name="group_provider" string="数据源" context="{'group_by': 'provider_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gps_position" model="ir.actions.act_window">
+        <field name="name">定位记录</field>
+        <field name="res_model">gps.position</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_gps_position_search"/>
+        <!-- 默认只看最近 7 天，避免大表全量分页统计 -->
+        <field name="context">{'search_default_filter_last_7_days': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">还没有定位数据</p>
+            <p>定位数据由 GPS 平台推送。先在「GPS 数据源」里建好数据源、配好签名密钥，
+               把推送地址给平台方，并把设备的「数据源」字段选上，数据才会入库。</p>
+        </field>
+    </record>
+</odoo>

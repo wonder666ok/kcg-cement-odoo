@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_transport_carrier_user,transport.carrier.user,model_transport_carrier,base.group_user,1,0,0,0
+access_transport_carrier_fleet,transport.carrier.fleet,model_transport_carrier,group_kcg_fleet_user,1,1,1,0
+access_transport_carrier_manager,transport.carrier.manager,model_transport_carrier,group_kcg_fleet_manager,1,1,1,1
+access_transport_vehicle_user,transport.vehicle.user,model_transport_vehicle,base.group_user,1,0,0,0
+access_transport_vehicle_fleet,transport.vehicle.fleet,model_transport_vehicle,group_kcg_fleet_user,1,1,1,0
+access_transport_vehicle_manager,transport.vehicle.manager,model_transport_vehicle,group_kcg_fleet_manager,1,1,1,1
+access_transport_driver_fleet,transport.driver.fleet,model_transport_driver,group_kcg_fleet_user,1,1,1,0
+access_transport_driver_manager,transport.driver.manager,model_transport_driver,group_kcg_fleet_manager,1,1,1,1
+access_gps_device_fleet,gps.device.fleet,model_gps_device,group_kcg_fleet_user,1,1,1,0
+access_gps_device_manager,gps.device.manager,model_gps_device,group_kcg_fleet_manager,1,1,1,1

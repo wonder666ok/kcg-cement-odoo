@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_cement_customer_search" model="ir.ui.view">
         <field name="name">cement.customer.search</field>
@@ -72,9 +72,9 @@
                 <field name="next_followup_date"/>
                 <field name="sales_currency_id" invisible="1"/>
                 <field name="total_sales_amount"/>
-                <field name="invoice_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="payment_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="outstanding_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="total_invoiced_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="payment_currency_id" invisible="1"/>
+                <field name="total_payment_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
                 <field name="overdue_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
                 <field name="financial_currency_id" invisible="1"
                        groups="account.group_account_invoice,account.group_account_readonly"/>
@@ -92,6 +92,11 @@
                 <header>
                     <button name="action_new_cement_quotation" type="object"
                             string="新建报价" class="oe_highlight"/>
+                    <button name="action_send_whatsapp" type="object"
+                            string="WhatsApp 消息" icon="fa-whatsapp"/>
+                    <button name="action_send_whatsapp_reminder" type="object"
+                            string="催款提醒(WhatsApp)" icon="fa-bell-o"
+                            groups="account.group_account_invoice,account.group_account_readonly"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -115,7 +120,7 @@
                                 invisible="not partner_id">
                             <field name="invoice_count" widget="statinfo" string="发票数量"/>
                         </button>
-                        <button name="action_view_customer_receivables" type="object" class="oe_stat_button" icon="fa-exclamation-circle" groups="account.group_account_invoice,account.group_account_readonly" invisible="not has_receivable"><field name="outstanding_amount" widget="statinfo" string="应收"/></button>
+                        <button name="action_view_customer_receivables" type="object" class="oe_stat_button" icon="fa-exclamation-circle" groups="account.group_account_invoice,account.group_account_readonly" invisible="not has_receivable"><field name="total_due_amount" widget="statinfo" string="应收"/></button>
                         <button name="action_view_customer_overdue_receivables" type="object" class="oe_stat_button" icon="fa-clock-o" groups="account.group_account_invoice,account.group_account_readonly" invisible="overdue_invoice_count == 0"><field name="overdue_invoice_count" widget="statinfo" string="逾期应收"/></button>
                         <button name="action_view_cement_orders" type="object"
                                 class="oe_stat_button" icon="fa-list-alt">
@@ -175,7 +180,7 @@
                         <field name="sales_currency_id" invisible="1"/>
                         <field name="total_sales_amount"/>
                         <field name="last_order_date"/>
-                        <field name="quotation_count"/>
+                        <field name="quotation_count" string="销售订单数量"/>
                         <field name="confirmed_order_count"/>
                         <field name="delivery_count"/>
                         <field name="payment_record_count"/>
@@ -201,9 +206,9 @@
                         <field name="financial_currency_id" invisible="1"/>
                         <field name="has_multiple_invoice_currencies" invisible="1"/>
                         <field name="invoice_count"/>
-                        <field name="invoice_amount" string="累计开票"/>
-                        <field name="payment_amount" string="已确认回款"/>
-                        <field name="outstanding_amount" string="未收款"/>
+                        <field name="total_invoiced_amount" string="累计开票"/>
+                        <field name="total_paid_amount" string="已收款金额"/>
+                        <field name="total_due_amount" string="未收款"/>
                         <field name="overdue_amount" string="逾期未收款"/>
                         <field name="last_payment_date"/>
                         <field name="receivable_status" widget="badge"/>
@@ -249,7 +254,7 @@
                                     <field name="sale_order_id"/>
                                     <field name="picking_id"/>
                                     <field name="delivery_region"/>
-                                    <field name="bag_count"/>
+                                    <field name="quantity"/>
                                     <field name="transport_type"/>
                                     <field name="vehicle_number"/>
                                     <field name="driver_name"/>
@@ -330,9 +335,12 @@
         <field name="search_view_id" ref="view_cement_customer_search"/>
     </record>
 
-    <menuitem id="menu_cement_sales_root" name="Cement Sales" sequence="10"/>
+    <menuitem id="menu_cement_sales_root" name="Cement Sales" sequence="10"
+              groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly,stock.group_stock_user"/>
     <menuitem id="menu_cement_customer" name="Customers" parent="menu_cement_sales_root"
-              action="action_cement_customer" sequence="10"/>
+              action="action_cement_customer" sequence="10"
+              groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
     <menuitem id="menu_cement_sales_orders" name="销售订单"
-              parent="menu_cement_sales_root" action="sale.action_orders" sequence="30"/>
+              parent="menu_cement_sales_root" action="sale.action_orders" sequence="30"
+              groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
 </odoo>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        车队档案菜单
+
+        菜单统一收在 group_kcg_fleet_user 之下，不给 base.group_user，
+        避免司机档案（含证件号、电话）对全体内部用户可见。
+        GPS 设备与定位数据同时要求车队主管权限，见 kcg_gps_tracking 的菜单定义。
+    -->
+    <menuitem id="menu_kcg_fleet_root"
+              name="运输档案"
+              sequence="15"
+              groups="group_kcg_fleet_user"/>
+
+    <menuitem id="menu_transport_vehicle"
+              name="车辆"
+              parent="menu_kcg_fleet_root"
+              action="action_transport_vehicle"
+              sequence="10"/>
+
+    <menuitem id="menu_transport_driver"
+              name="司机"
+              parent="menu_kcg_fleet_root"
+              action="action_transport_driver"
+              sequence="20"/>
+
+    <menuitem id="menu_transport_carrier"
+              name="承运商"
+              parent="menu_kcg_fleet_root"
+              action="action_transport_carrier"
+              sequence="30"/>
+
+    <menuitem id="menu_gps_device"
+              name="GPS 设备"
+              parent="menu_kcg_fleet_root"
+              action="action_gps_device"
+              sequence="40"/>
+</odoo>

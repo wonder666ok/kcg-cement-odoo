@@ -9,6 +9,7 @@
                 <page string="水泥信息">
                     <group>
                         <field name="cement_grade"/>
+                        <field name="uom_id" string="主单位" options="{'no_open': True, 'no_create': True}"/>
                         <field name="bag_weight_kg"/>
                     </group>
                 </page>

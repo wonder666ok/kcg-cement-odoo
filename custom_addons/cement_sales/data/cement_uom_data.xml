@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        袋装水泥的主计量单位。
+
+        重量类目（uom.product_uom_categ_kgm）的参照单位是 kg（factor = 1）。
+        Odoo 对 factor 的定义是「1 × 参照单位 = factor × 本单位」，
+        因此 1 kg = 0.02 袋 —— 也就是 1 袋 = 50kg、1 吨 = 20 袋。
+        rounding = 1：袋是整数单位，不会出现半袋。
+
+        业务上水泥按袋销售、按袋计价：订单行的「数量」就是袋数，
+        「单价」就是元/袋，订单金额 = 袋数 × 单价。
+    -->
+    <record id="uom_bag" model="uom.uom">
+        <field name="name">袋</field>
+        <field name="category_id" ref="uom.product_uom_categ_kgm"/>
+        <field name="factor" eval="0.02"/>
+        <field name="uom_type">smaller</field>
+        <field name="rounding" eval="1"/>
+    </record>
+
+</odoo>

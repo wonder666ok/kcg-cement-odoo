@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gps_provider_list" model="ir.ui.view">
+        <field name="name">gps.provider.list</field>
+        <field name="model">gps.provider</field>
+        <field name="arch" type="xml">
+            <list string="GPS 数据源">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="adapter_code"/>
+                <field name="auth_type"/>
+                <field name="device_count"/>
+                <field name="last_poll_datetime" optional="show"/>
+                <field name="adapter_warning" optional="show"
+                       decoration-danger="adapter_warning != False"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_gps_provider_form" model="ir.ui.view">
+        <field name="name">gps.provider.form</field>
+        <field name="model">gps.provider</field>
+        <field name="arch" type="xml">
+            <form string="GPS 数据源">
+                <sheet>
+                    <field name="active" invisible="1"/>
+                    <field name="adapter_warning" invisible="1"/>
+                    <widget name="web_ribbon" title="已停用" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="alert alert-warning" role="alert" invisible="not adapter_warning">
+                        <field name="adapter_warning"/>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="数据源名称"/>
+                        <h1><field name="name" placeholder="例如：XX 车联网平台"/></h1>
+                    </div>
+                    <group>
+                        <group name="left">
+                            <field name="code"/>
+                            <field name="adapter_code"/>
+                            <field name="auth_type"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group name="right">
+                            <field name="poll_interval_minutes"/>
+                            <field name="last_poll_datetime"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="推送地址">
+                        <field name="webhook_path" readonly="1" widget="CopyClipboardChar"
+                               help="把该地址配置到平台的推送设置里。标识必须与上面的「标识」一致。"/>
+                        <div class="text-danger" colspan="2">
+                            未配置「Webhook 签名密钥」时，该地址会直接拒绝所有请求——
+                            公网写入接口不会在不校验来源的情况下开放。
+                        </div>
+                    </group>
+                    <group name="credentials"
+                           groups="kcg_fleet_base.group_kcg_fleet_manager">
+                        <field name="api_base_url"/>
+                        <field name="api_key" password="True"/>
+                        <field name="api_secret" password="True"/>
+                        <field name="webhook_secret" password="True"/>
+                    </group>
+                    <notebook>
+                        <page string="备注" name="notes">
+                            <field name="notes" placeholder="对接人、平台客服、联调记录等"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gps_provider_search" model="ir.ui.view">
+        <field name="name">gps.provider.search</field>
+        <field name="model">gps.provider</field>
+        <field name="arch" type="xml">
+            <search string="GPS 数据源">
+                <field name="name"/>
+                <field name="code"/>
+                <filter name="filter_inactive" string="已停用" domain="[('active', '=', False)]"/>
+                <group expand="0" string="分组">
+                    <filter name="group_adapter" string="适配器" context="{'group_by': 'adapter_code'}"/>
+                    <filter name="group_company" string="公司" context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gps_provider" model="ir.actions.act_window">
+        <field name="name">GPS 数据源</field>
+        <field name="res_model">gps.provider</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_gps_provider_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">先配一个 GPS 数据源</p>
+            <p>数据源对应一个车联网平台。适配器决定用哪段代码解析该平台的数据，
+               目前只有一个联调用的模拟适配器；接真实平台需要在代码里新增适配器类。</p>
+        </field>
+    </record>
+</odoo>

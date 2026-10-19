@@ -6,6 +6,14 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_send_whatsapp" type="object"
+                        class="oe_stat_button" icon="fa-whatsapp"
+                        invisible="not cement_customer_id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">WhatsApp</span>
+                        <span class="o_stat_text">发消息</span>
+                    </div>
+                </button>
                 <button name="action_view_cement_payments" type="object"
                         class="oe_stat_button" icon="fa-money"
                         groups="account.group_account_invoice,account.group_account_readonly"
@@ -38,15 +46,11 @@
                     <field name="cement_paid_amount"/>
                     <field name="cement_due_amount"/>
                     <field name="cement_payment_state" widget="badge"/>
-                    <field name="invoice_amount"/>
-                    <field name="paid_amount"/>
-                    <field name="outstanding_amount"/>
-                    <field name="payment_status" widget="badge"/>
                     <field name="cement_last_payment_date"/>
                 </group>
             </xpath>
             <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="after">
-                <field name="bag_count" optional="show"/>
+                <field name="cement_weight_tons" optional="show"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="交付记录">
@@ -56,7 +60,7 @@
                             <field name="customer_id"/>
                             <field name="picking_id"/>
                             <field name="delivery_region"/>
-                            <field name="bag_count"/>
+                            <field name="quantity"/>
                             <field name="transport_type"/>
                             <field name="vehicle_number"/>
                             <field name="driver_name"/>
@@ -89,12 +93,7 @@
                        groups="account.group_account_invoice,account.group_account_readonly"/>
                 <field name="cement_due_amount" optional="hide"
                        groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="payment_status" widget="badge" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="invoice_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="paid_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="outstanding_amount" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="cement_payment_state" widget="badge" optional="hide"
-                       groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_payment_state" widget="badge" optional="hide" groups="account.group_account_invoice,account.group_account_readonly"/>
             </xpath>
             <xpath expr="//list/field[@name='state']" position="attributes">
                 <attribute name="optional">show</attribute>
@@ -142,16 +141,16 @@
                 <field name="date_order" type="col" interval="month"/>
                 <field name="cement_sales_amount_company_currency" type="measure"/>
                 <field name="cement_delivery_quantity" type="measure"/>
-                <field name="invoice_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="paid_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="outstanding_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_invoiced_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_paid_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_due_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
             </pivot>
         </field>
     </record>
 
     <record id="view_cement_sales_analysis_list" model="ir.ui.view">
         <field name="name">sale.order.cement.analysis.list</field><field name="model">sale.order</field>
-        <field name="arch" type="xml"><list string="销售分析"><field name="date_order"/><field name="user_id"/><field name="cement_customer_id"/><field name="delivery_region"/><field name="cement_grade_analysis"/><field name="name"/><field name="cement_sales_amount_company_currency"/><field name="cement_delivery_quantity"/><field name="invoice_amount" groups="account.group_account_invoice,account.group_account_readonly"/><field name="paid_amount" groups="account.group_account_invoice,account.group_account_readonly"/><field name="outstanding_amount" groups="account.group_account_invoice,account.group_account_readonly"/><field name="cement_payment_count" groups="account.group_account_invoice,account.group_account_readonly"/></list></field>
+        <field name="arch" type="xml"><list string="销售分析"><field name="date_order"/><field name="user_id"/><field name="cement_customer_id"/><field name="delivery_region"/><field name="cement_grade_analysis"/><field name="name"/><field name="cement_sales_amount_company_currency"/><field name="cement_delivery_quantity"/><field name="cement_invoiced_amount" groups="account.group_account_invoice,account.group_account_readonly"/><field name="cement_paid_amount" groups="account.group_account_invoice,account.group_account_readonly"/><field name="cement_due_amount" groups="account.group_account_invoice,account.group_account_readonly"/><field name="cement_payment_count" groups="account.group_account_invoice,account.group_account_readonly"/></list></field>
     </record>
     <record id="view_cement_sales_analysis_graph" model="ir.ui.view">
         <field name="name">sale.order.cement.analysis.graph</field>
@@ -162,9 +161,9 @@
                 <field name="date_order" interval="month" type="col"/>
                 <field name="cement_sales_amount_company_currency" type="measure"/>
                 <field name="cement_delivery_quantity" type="measure"/>
-                <field name="invoice_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="paid_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
-                <field name="outstanding_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_invoiced_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_paid_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="cement_due_amount" type="measure" groups="account.group_account_invoice,account.group_account_readonly"/>
             </graph>
         </field>
     </record>
@@ -181,8 +180,8 @@
     <menuitem id="menu_cement_sales_dashboard" name="销售仪表盘"
               parent="menu_cement_sales_root" action="action_cement_sales_dashboard"
               sequence="5"
-              groups="sales_team.group_sale_salesman,account.group_account_invoice,account.group_account_readonly"/>
+              groups="cement_sales.group_cement_sales_user,cement_sales.group_cement_sales_manager,sales_team.group_sale_salesman,account.group_account_invoice,account.group_account_readonly"/>
     <menuitem id="menu_cement_sales_analysis" name="销售分析"
               parent="menu_cement_sales_root" action="action_cement_sales_analysis"
-              sequence="35" groups="sales_team.group_sale_salesman,account.group_account_invoice,account.group_account_readonly"/>
+              sequence="35" groups="cement_sales.group_cement_sales_user,cement_sales.group_cement_sales_manager,sales_team.group_sale_salesman,account.group_account_invoice,account.group_account_readonly"/>
 </odoo>

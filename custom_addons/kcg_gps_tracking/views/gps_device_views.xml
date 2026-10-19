@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        给 kcg_fleet_base 的 GPS 设备视图补上「数据源」与「最后定位」。
+
+        用 xpath 继承而不是改原文件：基础档案模块不依赖定位模块，
+        设备视图里本来就没有这些字段和列。
+    -->
+
+    <record id="view_gps_device_list_tracking" model="ir.ui.view">
+        <field name="name">gps.device.list.tracking</field>
+        <field name="model">gps.device</field>
+        <field name="inherit_id" ref="kcg_fleet_base.view_gps_device_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vehicle_plate']" position="after">
+                <field name="provider_id" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='install_date']" position="after">
+                <field name="last_position_datetime" optional="show"/>
+                <field name="track_state" widget="badge" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_gps_device_form_tracking" model="ir.ui.view">
+        <field name="name">gps.device.form.tracking</field>
+        <field name="model">gps.device</field>
+        <field name="inherit_id" ref="kcg_fleet_base.view_gps_device_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vehicle_id']" position="after">
+                <field name="provider_id"/>
+            </xpath>
+            <xpath expr="//page[@name='notes']" position="before">
+                <page string="定位" name="positions">
+                    <group>
+                        <group name="last_position" string="最后定位">
+                            <field name="last_position_datetime"/>
+                            <field name="last_speed_kmh"/>
+                            <field name="track_state" widget="badge"
+                                   decoration-success="track_state == 'live'"
+                                   decoration-warning="track_state == 'stale'"
+                                   decoration-danger="track_state == 'offline'"
+                                   decoration-muted="track_state == 'unknown'"/>
+                        </group>
+                        <group name="last_coord" string="坐标">
+                            <field name="last_latitude"/>
+                            <field name="last_longitude"/>
+                        </group>
+                    </group>
+                    <field name="position_ids">
+                        <list create="false" delete="false" default_order="position_datetime desc">
+                            <field name="position_datetime"/>
+                            <field name="latitude"/>
+                            <field name="longitude"/>
+                            <field name="speed_kmh"/>
+                            <field name="ignition"/>
+                            <field name="address"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_gps_device_search_tracking" model="ir.ui.view">
+        <field name="name">gps.device.search.tracking</field>
+        <field name="model">gps.device</field>
+        <field name="inherit_id" ref="kcg_fleet_base.view_gps_device_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='serial_number']" position="after">
+                <field name="provider_id"/>
+            </xpath>
+            <xpath expr="//filter[@name='filter_unassigned']" position="after">
+                <filter name="filter_no_provider" string="未配数据源"
+                        domain="[('provider_id', '=', False)]"/>
+                <!--
+                    刻意不用 track_state：它是非存储计算字段（因为「是否离线」取决于
+                    当前时间，存下来就不会随时间自动变旧），无法用于 domain。
+                    这里直接比较已存库的 last_position_datetime。
+
+                    日期表达式用 relativedelta + '%Y-%m-%d'（核心库 stock 等模块的写法）。
+                    不要写成 datetime.timedelta(...).strftime('%Y-%m-%d 00:00:00')：
+                    这类 domain 是先下发到前端、由 py_js 解释器求值的，
+                    PyDate.strftime 只实现了日期部分，%H:%M:%S 不保证有输出。
+                    粒度是「天」，所以标签写「超 1 天」而不是「超 24 小时」。
+                -->
+                <filter name="filter_offline" string="超 1 天无定位"
+                        domain="['|', ('last_position_datetime', '=', False), ('last_position_datetime', '&lt;', (context_today() - relativedelta(days=1)).strftime('%Y-%m-%d'))]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gps_alert_list" model="ir.ui.view">
+        <field name="name">gps.alert.list</field>
+        <field name="model">gps.alert</field>
+        <field name="arch" type="xml">
+            <list string="GPS 告警"
+                  decoration-danger="severity == 'critical' and state == 'new'"
+                  decoration-warning="severity == 'warning' and state == 'new'">
+                <field name="alert_datetime"/>
+                <field name="name"/>
+                <field name="alert_type" optional="show"/>
+                <field name="severity" widget="badge" optional="show"
+                       decoration-danger="severity == 'critical'"
+                       decoration-warning="severity == 'warning'"
+                       decoration-info="severity == 'info'"/>
+                <field name="vehicle_id" optional="show"/>
+                <field name="driver_id" optional="hide"/>
+                <field name="state" widget="badge" optional="show"
+                       decoration-info="state == 'new'"
+                       decoration-success="state == 'resolved'"
+                       decoration-muted="state in ('ignored', 'acknowledged')"/>
+                <field name="handled_by" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_gps_alert_kanban" model="ir.ui.view">
+        <field name="name">gps.alert.kanban</field>
+        <field name="model">gps.alert</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <field name="name" class="fw-bold"/>
+                                <div class="text-muted"><field name="alert_datetime"/></div>
+                            </div>
+                            <field name="severity" widget="label_selection"
+                                   options="{'classes': {'info': 'info', 'warning': 'warning', 'critical': 'danger'}}"/>
+                        </div>
+                        <div class="mt-1">
+                            <span class="text-muted">车辆：</span><field name="vehicle_id"/>
+                        </div>
+                        <div t-if="record.detail.raw_value" class="mt-1 text-muted">
+                            <field name="detail"/>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_gps_alert_form" model="ir.ui.view">
+        <field name="name">gps.alert.form</field>
+        <field name="model">gps.alert</field>
+        <field name="arch" type="xml">
+            <form string="GPS 告警">
+                <header>
+                    <button name="action_acknowledge" type="object" string="确认"
+                            class="btn-primary" invisible="state != 'new'"/>
+                    <button name="action_resolve" type="object" string="标记已处理"
+                            class="btn-primary" invisible="state not in ('new', 'acknowledged')"/>
+                    <button name="action_ignore" type="object" string="忽略"
+                            invisible="state not in ('new', 'acknowledged')"/>
+                    <button name="action_reopen" type="object" string="重新打开"
+                            invisible="state == 'new'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="new,acknowledged,resolved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group name="left">
+                            <field name="alert_type"/>
+                            <field name="severity"/>
+                            <field name="alert_datetime"/>
+                        </group>
+                        <group name="right">
+                            <field name="vehicle_id"/>
+                            <field name="driver_id"/>
+                            <field name="device_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="位置">
+                        <group name="coord">
+                            <field name="latitude"/>
+                            <field name="longitude"/>
+                        </group>
+                        <group name="trigger">
+                            <field name="provider_id"/>
+                            <field name="position_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="detail" placeholder="告警的原始内容"/>
+                    </group>
+                    <group string="处理">
+                        <group name="handling">
+                            <field name="handled_by"/>
+                            <field name="handled_datetime"/>
+                        </group>
+                        <group name="resolution">
+                            <field name="resolution_note" placeholder="怎么处理的、跟司机核实的结果等"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gps_alert_search" model="ir.ui.view">
+        <field name="name">gps.alert.search</field>
+        <field name="model">gps.alert</field>
+        <field name="arch" type="xml">
+            <search string="GPS 告警">
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="device_id"/>
+                <field name="driver_id"/>
+                <filter name="filter_new" string="待处理" domain="[('state', '=', 'new')]"/>
+                <filter name="filter_critical" string="严重" domain="[('severity', '=', 'critical')]"/>
+                <separator/>
+                <filter name="filter_last_7_days" string="最近 7 天"
+                        domain="[('alert_datetime', '&gt;=', (context_today() - relativedelta(days=6)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="filter_by_date" string="告警时间" date="alert_datetime" default_period="month"/>
+                <group expand="0" string="分组">
+                    <filter name="group_state" string="处理状态" context="{'group_by': 'state'}"/>
+                    <filter name="group_type" string="告警类型" context="{'group_by': 'alert_type'}"/>
+                    <filter name="group_vehicle" string="车辆" context="{'group_by': 'vehicle_id'}"/>
+                    <filter name="group_severity" string="严重程度" context="{'group_by': 'severity'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gps_alert_all" model="ir.actions.act_window">
+        <field name="name">全部告警</field>
+        <field name="res_model">gps.alert</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_gps_alert_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">暂无告警</p>
+            <p>超速、长时间停留、设备离线等异常会在这里汇总，处理完可以留下说明。</p>
+        </field>
+    </record>
+
+    <record id="action_gps_alert_pending" model="ir.actions.act_window">
+        <field name="name">待处理告警</field>
+        <field name="res_model">gps.alert</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_gps_alert_search"/>
+        <field name="domain">[('state', '=', 'new')]</field>
+        <field name="context">{'search_default_filter_new': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">没有待处理的告警</p>
+        </field>
+    </record>
+</odoo>

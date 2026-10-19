@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        车队基础档案的权限
+
+        分层：
+        - 车队调度员（group_kcg_fleet_user）：日常维护车辆、司机、承运商、GPS 设备，不能删除。
+        - 车队主管（group_kcg_fleet_manager）：在调度员之上再加删除权，并可维护 GPS 数据源。
+        - 普通内部用户（base.group_user）：只读车辆与承运商（下单、发货需要选车），
+          不给司机档案——司机含证件号码、电话等个人信息。
+
+        车辆与承运商对所有人只读是有意的：cement_sales 的交付单要显示车牌下拉，
+        若不给读权限，销售员在交付单上连车牌都选不了。
+    -->
+
+    <!-- ==================== 分组 ==================== -->
+    <record id="group_kcg_fleet_user" model="res.groups">
+        <field name="name">车队调度员</field>
+        <field name="category_id" ref="base.module_category_human_resources_fleet"/>
+        <field name="comment">可维护车辆、司机、承运商与 GPS 设备档案，不能删除档案。</field>
+    </record>
+
+    <record id="group_kcg_fleet_manager" model="res.groups">
+        <field name="name">车队主管</field>
+        <field name="category_id" ref="base.module_category_human_resources_fleet"/>
+        <field name="implied_ids" eval="[(4, ref('group_kcg_fleet_user'))]"/>
+        <field name="comment">在车队调度员权限之上可删除档案，并可维护 GPS 数据源与查看定位数据。</field>
+    </record>
+
+    <!--
+        默认把车队主管加给管理员账号。
+        上一轮改造 cement_sales 的 access.csv 时把 base.group_user 的授权拿掉，
+        结果管理员被降成只读、打不开应用。基础档案模块一开始就避免这个坑，
+        其余用户仍需在「设置 → 用户」里手工分配车队分组。
+    -->
+    <record id="base.user_admin" model="res.users">
+        <field name="groups_id" eval="[(4, ref('group_kcg_fleet_manager'))]"/>
+    </record>
+
+    <!-- ==================== 多公司 ====================
+         不设 groups，属于全局规则，对所有用户无条件生效。
+    -->
+    <record id="rule_transport_carrier_company" model="ir.rule">
+        <field name="name">承运商：多公司</field>
+        <field name="model_id" ref="model_transport_carrier"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="rule_transport_vehicle_company" model="ir.rule">
+        <field name="name">车辆：多公司</field>
+        <field name="model_id" ref="model_transport_vehicle"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="rule_transport_driver_company" model="ir.rule">
+        <field name="name">司机：多公司</field>
+        <field name="model_id" ref="model_transport_driver"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="rule_gps_device_company" model="ir.rule">
+        <field name="name">GPS 设备：多公司</field>
+        <field name="model_id" ref="model_gps_device"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

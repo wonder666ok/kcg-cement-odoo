@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_transport_driver_list" model="ir.ui.view">
+        <field name="name">transport.driver.list</field>
+        <field name="model">transport.driver</field>
+        <field name="arch" type="xml">
+            <list string="司机"
+                  decoration-danger="license_state == 'expired'"
+                  decoration-warning="license_state == 'soon'">
+                <field name="name"/>
+                <field name="phone" optional="show"/>
+                <field name="carrier_id" optional="show"/>
+                <field name="license_type" optional="show"/>
+                <field name="license_expiry" optional="show"/>
+                <field name="license_state" widget="badge"
+                       decoration-danger="license_state == 'expired'"
+                       decoration-warning="license_state == 'soon'"
+                       decoration-success="license_state == 'valid'"
+                       decoration-muted="license_state == 'unknown'"/>
+                <field name="current_vehicle_id" optional="show"/>
+                <field name="state" widget="badge" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_transport_driver_kanban" model="ir.ui.view">
+        <field name="name">transport.driver.kanban</field>
+        <field name="model">transport.driver</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <field name="name" class="fw-bold"/>
+                                <div class="text-muted"><field name="phone"/></div>
+                            </div>
+                            <field name="state" widget="label_selection"
+                                   options="{'classes': {'available': 'success', 'on_trip': 'info', 'rest': 'warning', 'inactive': 'muted'}}"/>
+                        </div>
+                        <div class="mt-1">
+                            <field name="carrier_id"/>
+                        </div>
+                        <div class="mt-1 text-muted">
+                            当前车辆：<field name="current_vehicle_id"/>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_transport_driver_form" model="ir.ui.view">
+        <field name="name">transport.driver.form</field>
+        <field name="model">transport.driver</field>
+        <field name="arch" type="xml">
+            <form string="司机">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_vehicles" type="object" class="oe_stat_button" icon="fa-truck"
+                                invisible="not vehicle_ids">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">常驻车辆</span>
+                            </div>
+                        </button>
+                        <button name="action_view_partner" type="object" class="oe_stat_button" icon="fa-address-book"
+                                invisible="not partner_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">联系人</span>
+                            </div>
+                        </button>
+                    </div>
+                    <field name="active" invisible="1"/>
+                    <widget name="web_ribbon" title="已归档" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="license_state" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name" string="司机姓名"/>
+                        <h1><field name="name" placeholder="例如：MALIK"/></h1>
+                    </div>
+                    <group>
+                        <group name="left">
+                            <field name="phone"/>
+                            <field name="carrier_id"/>
+                            <field name="state"/>
+                            <field name="hire_date"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group name="right">
+                            <field name="license_type"/>
+                            <field name="license_number"/>
+                            <field name="license_expiry"/>
+                            <field name="license_state" widget="badge"
+                                   decoration-danger="license_state == 'expired'"
+                                   decoration-warning="license_state == 'soon'"
+                                   decoration-success="license_state == 'valid'"
+                                   decoration-muted="license_state == 'unknown'"/>
+                            <field name="id_number"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group name="emergency" string="紧急联系">
+                            <field name="emergency_contact"/>
+                            <field name="emergency_phone"/>
+                        </group>
+                        <group name="other" string="其他">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="常驻车辆" name="vehicles">
+                            <field name="vehicle_ids">
+                                <list>
+                                    <field name="name" string="车牌号"/>
+                                    <field name="vehicle_type"/>
+                                    <field name="carrier_id"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="备注" name="notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_transport_driver_search" model="ir.ui.view">
+        <field name="name">transport.driver.search</field>
+        <field name="model">transport.driver</field>
+        <field name="arch" type="xml">
+            <search string="司机">
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="license_number"/>
+                <field name="carrier_id"/>
+                <filter name="filter_available" string="待命" domain="[('state', '=', 'available')]"/>
+                <filter name="filter_on_trip" string="在途" domain="[('state', '=', 'on_trip')]"/>
+                <separator/>
+                <filter name="filter_license_expired" string="驾照已过期"
+                        domain="[('license_state', '=', 'expired')]"/>
+                <filter name="filter_license_soon" string="驾照将到期"
+                        domain="[('license_state', '=', 'soon')]"/>
+                <separator/>
+                <filter name="filter_inactive" string="已归档" domain="[('active', '=', False)]"/>
+                <group expand="0" string="分组">
+                    <filter name="group_state" string="状态" context="{'group_by': 'state'}"/>
+                    <filter name="group_carrier" string="承运商" context="{'group_by': 'carrier_id'}"/>
+                    <filter name="group_license_state" string="驾照状态"
+                            context="{'group_by': 'license_state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_transport_driver" model="ir.actions.act_window">
+        <field name="name">司机</field>
+        <field name="res_model">transport.driver</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_transport_driver_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">先建一个司机档案</p>
+            <p>登记司机与驾照信息，驾照将到期会自动高亮，避免派了驾照过期的车上路。</p>
+        </field>
+    </record>
+
+    <!-- 联系人模块：增加「司机」筛选，把司机单独分成一类 -->
+    <record id="view_res_partner_filter_add_driver" model="ir.ui.view">
+        <field name="name">res.partner.search.add.driver.category</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter name="filter_kcg_drivers" string="司机"
+                        domain="[('category_id.name', '=', '司机')]"/>
+            </xpath>
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter name="group_kcg_driver_category" string="司机分类"
+                        context="{'group_by': 'category_id'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gps_provider_fleet,gps.provider.fleet,model_gps_provider,kcg_fleet_base.group_kcg_fleet_user,1,0,0,0
+access_gps_provider_manager,gps.provider.manager,model_gps_provider,kcg_fleet_base.group_kcg_fleet_manager,1,1,1,1
+access_gps_position_fleet,gps.position.fleet,model_gps_position,kcg_fleet_base.group_kcg_fleet_user,1,0,0,0
+access_gps_position_manager,gps.position.manager,model_gps_position,kcg_fleet_base.group_kcg_fleet_manager,1,1,0,0
+access_gps_alert_fleet,gps.alert.fleet,model_gps_alert,kcg_fleet_base.group_kcg_fleet_user,1,1,1,0
+access_gps_alert_manager,gps.alert.manager,model_gps_alert,kcg_fleet_base.group_kcg_fleet_manager,1,1,1,1

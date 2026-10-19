@@ -6,6 +6,13 @@ class CementFollowup(models.Model):
     _description = "Cement Sales Follow-up"
     _order = "next_followup_date asc, date desc, id desc"
 
+    company_id = fields.Many2one(
+        "res.company",
+        string="公司",
+        required=True,
+        index=True,
+        default=lambda self: self.env.company,
+    )
     customer_id = fields.Many2one(
         "cement.customer",
         string="客户",
@@ -55,14 +62,20 @@ class CementFollowup(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            customer_id = vals.get("customer_id") or self.env.context.get(
+                "default_customer_id"
+            )
+            customer = self.env["cement.customer"].browse(customer_id).exists()
             if not vals.get("salesperson_id"):
-                customer_id = vals.get("customer_id") or self.env.context.get(
-                    "default_customer_id"
-                )
-                customer = self.env["cement.customer"].browse(customer_id).exists()
                 vals["salesperson_id"] = (
                     customer.sales_person.id if customer and customer.sales_person
                     else self.env.user.id
+                )
+            if not vals.get("company_id"):
+                # 跟进记录跟随客户所属公司，避免多公司数据串味。
+                vals["company_id"] = (
+                    customer.company_id.id if customer and customer.company_id
+                    else self.env.company.id
                 )
         records = super().create(vals_list)
         records._sync_customer_next_followup_date(preserve_later=True)
