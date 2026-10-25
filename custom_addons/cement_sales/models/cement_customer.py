@@ -603,48 +603,74 @@ class CementCustomer(models.Model):
         return action
 
     @api.model
+    def _image_source_candidates(self, data):
+        """把二进制字段值展开成"可能是原始图片字节"的候选列表。
+
+        Odoo 的 Binary 值可能是 base64 字符串、base64 文本的 bytes，
+        也可能是原始图片字节，这里统一穷举解码，交给 PIL 逐一尝试。
+        """
+        if not data:
+            return []
+        candidates = []
+        if isinstance(data, str):
+            try:
+                candidates.append(base64.b64decode(data))
+            except (binascii.Error, ValueError):
+                pass
+        elif isinstance(data, (bytes, bytearray)):
+            data = bytes(data)
+            try:
+                decoded = base64.b64decode(data, validate=True)
+                if decoded:
+                    candidates.append(decoded)
+            except (binascii.Error, ValueError):
+                pass
+            candidates.append(data)
+        return [item for item in candidates if item]
+
+    @api.model
     def _normalize_customer_image(self, data):
         """把上传的图片统一转码为浏览器可显示的 PNG。
 
         支持 JPG/PNG/WebP/BMP/GIF 及 iPhone HEIC/HEIF（需 pillow-heif）；
         非图片文件（如 PDF）给出明确的中文提示而不是模糊报错。
-        兼容 base64 字符串与 bytes 两种入参（向导/write 传值时机不同）。
+        兼容 base64 字符串 / base64 bytes / 原始图片字节三种入参。
         """
         if not data:
             return False
-        if isinstance(data, str):
+        for candidate in self._image_source_candidates(data):
             try:
-                data = base64.b64decode(data)
-            except (binascii.Error, ValueError):
-                raise UserError(_("图片数据无效，请重新上传。"))
-        try:
-            processed = image_process(data, size=(1920, 1920), output_format="PNG")
-        except UserError:
-            formats = "JPG、PNG、WebP、BMP"
-            if HEIF_SUPPORTED:
-                formats += "、HEIC（iPhone 照片）"
-            raise UserError(
-                _("上传的文件不是有效的图片格式。支持的格式：%s。"
-                  "如果上传的是 PDF 或扫描件，请先转换/另存为图片再上传。") % formats
-            )
-        return base64.b64encode(processed).decode() if processed else False
+                processed = image_process(
+                    candidate, size=(1920, 1920), output_format="PNG"
+                )
+            except UserError:
+                continue
+            if processed:
+                return base64.b64encode(processed).decode()
+        formats = "JPG、PNG、WebP、BMP"
+        if HEIF_SUPPORTED:
+            formats += "、HEIC（iPhone 照片）"
+        raise UserError(
+            _("上传的文件不是有效的图片格式。支持的格式：%s。"
+              "如果上传的是 PDF 或扫描件，请先转换/另存为图片再上传。") % formats
+        )
 
     @api.depends("image_1920")
     def _compute_image_128(self):
         for customer in self:
             thumb = False
-            source = customer.image_1920
-            if source:
+            for candidate in self._image_source_candidates(customer.image_1920):
                 try:
-                    if isinstance(source, str):
-                        source = base64.b64decode(source)
-                    thumb = image_process(source, size=(128, 128))
-                except (UserError, OSError, binascii.Error, ValueError):
-                    # 解码失败（如浏览器/解码器不支持该格式）时不阻塞保存
-                    _logger.warning(
-                        "cement.customer id=%s image_1920 缩略图生成失败",
-                        customer.id,
-                    )
+                    thumb = image_process(candidate, size=(128, 128))
+                    break
+                except (UserError, OSError, ValueError):
+                    continue
+            if customer.image_1920 and not thumb:
+                # 解码失败（如解码器不支持该格式）时记录日志但不阻塞保存
+                _logger.warning(
+                    "cement.customer id=%s image_1920 缩略图生成失败",
+                    customer.id,
+                )
             customer.image_128 = thumb
             customer.has_image = bool(customer.image_1920)
 
