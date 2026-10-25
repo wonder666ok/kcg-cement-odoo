@@ -671,7 +671,10 @@ class CementCustomer(models.Model):
                     "cement.customer id=%s image_1920 缩略图生成失败",
                     customer.id,
                 )
-            customer.image_128 = thumb
+            # Binary 字段约定值必须是 base64 文本，image_process 返回原始字节
+            customer.image_128 = (
+                base64.b64encode(thumb).decode() if thumb else False
+            )
             customer.has_image = bool(customer.image_1920)
 
     @api.model_create_multi
