@@ -1,6 +1,7 @@
 ﻿from datetime import timedelta
 
 from odoo import api, fields, models
+from odoo.tools import image_process
 
 
 class CementCustomer(models.Model):
@@ -10,6 +11,17 @@ class CementCustomer(models.Model):
     _order = "name"
 
     name = fields.Char(string="客户名称", required=True)
+    # 客户照片 / Logo：表单左侧头像展示，点击可放大；
+    # 列表显示小头像；创建/更新 Odoo 联系人时同步过去。
+    image_1920 = fields.Binary(
+        string="照片/Logo",
+        attachment=True,
+        help="客户照片、店铺门头或公司 Logo，支持 png/jpg。",
+    )
+    image_128 = fields.Binary(
+        string="头像(小图)", compute="_compute_image_128", store=True, attachment=True
+    )
+    has_image = fields.Boolean(compute="_compute_image_128")
     company_id = fields.Many2one(
         "res.company",
         string="公司",
@@ -576,6 +588,22 @@ class CementCustomer(models.Model):
         }
         return action
 
+    @api.depends("image_1920")
+    def _compute_image_128(self):
+        for customer in self:
+            customer.image_128 = image_process(
+                customer.image_1920, size=(128, 128)
+            ) if customer.image_1920 else False
+            customer.has_image = bool(customer.image_1920)
+
+    def write(self, vals):
+        res = super().write(vals)
+        # 照片变更时同步到已关联的 Odoo 联系人
+        if "image_1920" in vals:
+            for customer in self.filtered(lambda item: item.partner_id):
+                customer.partner_id.image_1920 = customer.image_1920
+        return res
+
     def _get_or_create_res_partner(self):
         self.ensure_one()
         if self.partner_id:
@@ -596,6 +624,7 @@ class CementCustomer(models.Model):
                 "email": self.email,
                 "city": self.region,
                 "comment": "\n".join(comment_lines) or False,
+                "image_1920": self.image_1920 or False,
             }
         )
         self.partner_id = partner

@@ -61,6 +61,8 @@
         <field name="model">cement.customer</field>
         <field name="arch" type="xml">
             <list string="客户">
+                <field name="image_1920" widget="image" options="{'size': [40, 40]}"
+                       optional="show"/>
                 <field name="name"/>
                 <field name="company_name"/>
                 <field name="phone"/>
@@ -99,8 +101,7 @@
                             groups="account.group_account_invoice,account.group_account_readonly"/>
                 </header>
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="action_create_partner" type="object"
+                    <div class="oe_button_box" name="button_box">                        <button name="action_create_partner" type="object"
                                 class="oe_stat_button" icon="fa-user-plus"
                                 invisible="partner_id">
                             <div class="o_stat_info">
@@ -150,6 +151,10 @@
                             <field name="payment_record_count" widget="statinfo" string="回款记录"/>
                         </button>
                     </div>
+                    <field name="image_128" invisible="1"/>
+                    <field name="image_1920" widget="image" class="oe_avatar"
+                           options="{'zoom': True, 'preview_image': 'image_128'}"
+                           placeholder="上传客户照片或公司 Logo"/>
                     <div class="oe_title">
                         <label for="name" string="客户名称"/>
                         <h1><field name="name" placeholder="客户名称"/></h1>
