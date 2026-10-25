@@ -1,4 +1,6 @@
 ﻿from datetime import timedelta
+import base64
+import binascii
 import logging
 
 from odoo import api, fields, models
@@ -606,11 +608,17 @@ class CementCustomer(models.Model):
 
         支持 JPG/PNG/WebP/BMP/GIF 及 iPhone HEIC/HEIF（需 pillow-heif）；
         非图片文件（如 PDF）给出明确的中文提示而不是模糊报错。
+        兼容 base64 字符串与 bytes 两种入参（向导/write 传值时机不同）。
         """
         if not data:
             return False
+        if isinstance(data, str):
+            try:
+                data = base64.b64decode(data)
+            except (binascii.Error, ValueError):
+                raise UserError(_("图片数据无效，请重新上传。"))
         try:
-            return image_process(data, size=(1920, 1920), output_format="PNG")
+            processed = image_process(data, size=(1920, 1920), output_format="PNG")
         except UserError:
             formats = "JPG、PNG、WebP、BMP"
             if HEIF_SUPPORTED:
@@ -619,16 +627,20 @@ class CementCustomer(models.Model):
                 _("上传的文件不是有效的图片格式。支持的格式：%s。"
                   "如果上传的是 PDF 或扫描件，请先转换/另存为图片再上传。") % formats
             )
+        return base64.b64encode(processed).decode() if processed else False
 
     @api.depends("image_1920")
     def _compute_image_128(self):
         for customer in self:
             thumb = False
-            if customer.image_1920:
+            source = customer.image_1920
+            if source:
                 try:
-                    thumb = image_process(customer.image_1920, size=(128, 128))
-                except UserError:
-                    # 原图暂时无法解码（如浏览器/服务端解码器缺失）时不阻塞保存
+                    if isinstance(source, str):
+                        source = base64.b64decode(source)
+                    thumb = image_process(source, size=(128, 128))
+                except (UserError, OSError, binascii.Error, ValueError):
+                    # 解码失败（如浏览器/解码器不支持该格式）时不阻塞保存
                     _logger.warning(
                         "cement.customer id=%s image_1920 缩略图生成失败",
                         customer.id,
