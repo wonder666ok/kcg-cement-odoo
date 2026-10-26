@@ -24,6 +24,7 @@
         "views/cement_sale_order_views.xml",
         "views/cement_delivery_views.xml",
         "views/cement_prepaid_views.xml",
+        "views/cement_partner_whatsapp_views.xml",
     ],
     "application": True,
     "installable": True,

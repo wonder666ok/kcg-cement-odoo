@@ -1,21 +1,18 @@
 import re
 from urllib.parse import quote
 
-from odoo import _, api, models
+from odoo import _, models
 from odoo.exceptions import AccessError, UserError
 
 
-class CementWhatsappMixin(models.AbstractModel):
-    """WhatsApp 网页版发送辅助。
+class CementWhatsappMixin:
+    """WhatsApp 网页版发送辅助（纯 Python 混入类，不注册为 Odoo 模型）。
 
     通过 wa.me 的 click-to-chat 链接调起 WhatsApp 网页版（web.whatsapp.com）
     或手机客户端，自动带出收件人与预填消息，用户确认后发送。
     不依赖任何外部 API，无额外费用与封号风险。
     """
-    _name = "cement.whatsapp.mixin"
-    _description = "WhatsApp 网页版消息辅助"
 
-    @api.model
     def _whatsapp_normalize(self, phone):
         """把各种写法的电话号码规范成 wa.me 需要的国际格式（纯数字，无 + 号）。
 
@@ -37,7 +34,6 @@ class CementWhatsappMixin(models.AbstractModel):
             )
         return digits
 
-    @api.model
     def _whatsapp_action(self, phone, message):
         """返回打开 WhatsApp 网页版并预填消息的动作。"""
         digits = self._whatsapp_normalize(phone)
@@ -48,7 +44,7 @@ class CementWhatsappMixin(models.AbstractModel):
         }
 
 
-class CementCustomerWhatsapp(models.Model):
+class CementCustomerWhatsapp(CementWhatsappMixin, models.Model):
     _inherit = "cement.customer"
 
     def _whatsapp_customer_phone(self):
@@ -110,7 +106,7 @@ class CementCustomerWhatsapp(models.Model):
         return self._whatsapp_action(phone, "\n".join(lines))
 
 
-class CementDeliveryWhatsapp(models.Model):
+class CementDeliveryWhatsapp(CementWhatsappMixin, models.Model):
     _inherit = "cement.delivery"
 
     def _whatsapp_customer_phone(self):
@@ -210,7 +206,7 @@ class CementDeliveryWhatsapp(models.Model):
         return self._whatsapp_action(phone, "\n".join(lines))
 
 
-class SaleOrderWhatsapp(models.Model):
+class SaleOrderWhatsapp(CementWhatsappMixin, models.Model):
     _inherit = "sale.order"
 
     def action_send_whatsapp(self):
@@ -242,5 +238,33 @@ class SaleOrderWhatsapp(models.Model):
             "",
             "We will keep you updated on the delivery. Thank you!",
             "- KCG Cement Sales",
+        ]
+        return self._whatsapp_action(phone, "\n".join(lines))
+
+
+class ResPartnerWhatsapp(CementWhatsappMixin, models.Model):
+    _inherit = "res.partner"
+
+    def _whatsapp_partner_phone(self):
+        self.ensure_one()
+        # 优先手机号，其次座机；公司联系人取上级公司电话
+        return self.mobile or self.phone or (self.parent_id.phone if self.parent_id else False)
+
+    def action_send_whatsapp(self):
+        """打开 WhatsApp 网页版，给该联系人发送消息。"""
+        self.ensure_one()
+        phone = self._whatsapp_partner_phone()
+        if not phone:
+            raise UserError(
+                _("联系人「%s」没有填写电话或手机号。") % (self.name or "")
+            )
+        company_name = self.env.company.name or "KCG Cement Sales"
+        lines = [
+            "Hello %s," % (self.name or ""),
+            "",
+            "This is %s. Please feel free to contact us anytime." % company_name,
+            "",
+            "Thank you!",
+            "- %s" % company_name,
         ]
         return self._whatsapp_action(phone, "\n".join(lines))
