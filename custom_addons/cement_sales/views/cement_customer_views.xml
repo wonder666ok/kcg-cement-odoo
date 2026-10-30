@@ -28,10 +28,10 @@
                         groups="account.group_account_invoice,account.group_account_readonly"/>
                 <filter name="my_cement_customers" string="我的客户"
                         domain="[('sales_person', '=', uid)]"/>
-                <filter name="new_cement_customers" string="新客户"
-                        domain="[('customer_status', '=', 'new')]"/>
-                <filter name="active_cement_customers" string="活跃客户"
-                        domain="[('customer_status', '=', 'active')]"/>
+                <filter name="high_cement_customers" string="四星五星"
+                        domain="[('customer_status', 'in', ['4', '5'])]"/>
+                <filter name="low_cement_customers" string="一二星"
+                        domain="[('customer_status', 'in', ['1', '2'])]"/>
                 <filter name="recent_cement_orders" string="近期有订单"
                         domain="[('recent_order', '=', True)]"/>
                 <separator/>
@@ -46,7 +46,7 @@
                 <group>
                     <filter name="group_sales_person" string="销售员" context="{'group_by': 'sales_person'}"/>
                     <filter name="group_region" string="地区" context="{'group_by': 'region'}"/>
-                    <filter name="group_customer_status" string="客户状态" context="{'group_by': 'customer_status'}"/>
+                    <filter name="group_customer_status" string="客户星级" context="{'group_by': 'customer_status'}"/>
                     <filter name="group_customer_source" string="客户来源" context="{'group_by': 'customer_source'}"/>
                     <filter name="group_receivable_status" string="应收状态" context="{'group_by': 'receivable_status'}" groups="account.group_account_invoice,account.group_account_readonly"/>
                 </group>
@@ -69,7 +69,7 @@
                 <field name="whatsapp"/>
                 <field name="region"/>
                 <field name="sales_person"/>
-                <field name="customer_status"/>
+                <field name="customer_status" widget="priority" optional="show"/>
 
                 <field name="next_followup_date"/>
                 <field name="sales_currency_id" invisible="1"/>
@@ -172,7 +172,7 @@
                             <field name="company_name"/>
                             <field name="customer_type"/>
 
-                            <field name="customer_status"/>
+                            <field name="customer_status" widget="priority"/>
 
                             <field name="next_followup_date"/>
                             <field name="active"/>

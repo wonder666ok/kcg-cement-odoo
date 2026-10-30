@@ -51,7 +51,7 @@ export class CementSalesDashboard extends Component {
         return [
             [
                 { key: "customers", label: "\u5ba2\u6237\u603b\u6570", value: kpis.customer_count },
-                { key: "active_customers", label: "\u6d3b\u8dc3\u5ba2\u6237", value: kpis.active_customer_count },
+                { key: "active_customers", label: "\u91cd\u70b9\u5ba2\u6237\uff08\u56db\u661f\u4ee5\u4e0a\uff09", value: kpis.active_customer_count },
                 { key: "followup_today", label: "\u4eca\u65e5\u5f85\u8ddf\u8fdb", value: kpis.today_followup_count },
                 { key: "followup_overdue", label: "\u5df2\u903e\u671f\u8ddf\u8fdb", value: kpis.overdue_followup_count },
             ],
@@ -140,7 +140,7 @@ export class CementSalesDashboard extends Component {
         ];
         const linkedInvoices = [["id", "in", this.state.data.linked_invoice_ids || []]];
         if (key === "customers" || key === "active_customers") {
-            return this.openAction("cement.customer", key === "active_customers" ? [["active", "=", true], ["customer_status", "=", "active"]] : [], "\u5ba2\u6237");
+            return this.openAction("cement.customer", key === "active_customers" ? [["active", "=", true], ["customer_status", "in", ["4", "5"]]] : [], "\u5ba2\u6237");
         }
         if (key === "followup_today") {
             return this.openAction("cement.followup", [["state", "=", "pending"], ["next_followup_date", "=", this.state.data.today]], "\u4eca\u65e5\u5f85\u8ddf\u8fdb");

@@ -72,12 +72,14 @@ class CementCustomer(models.Model):
     )
     customer_status = fields.Selection(
         selection=[
-            ("new", "新客户"),
-            ("active", "活跃客户"),
-            ("inactive", "不活跃客户"),
+            ("1", "一星"),
+            ("2", "二星"),
+            ("3", "三星"),
+            ("4", "四星"),
+            ("5", "五星"),
         ],
-        string="客户状态",
-        default="new",
+        string="客户星级",
+        default="1",
     )
     notes = fields.Text(string="备注")
     next_followup_date = fields.Date(string="下次跟进日期", index=True)

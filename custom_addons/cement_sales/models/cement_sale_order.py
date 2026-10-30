@@ -413,7 +413,9 @@ class SaleOrder(models.Model):
             ensure_rep(customer.sales_person)["customer_count"] += 1
 
         active_customers = sum(
-            1 for customer in customers if customer.active and customer.customer_status == "active"
+            1
+            for customer in customers
+            if customer.active and customer.customer_status in ("4", "5")
         )
         Followup = self.env["cement.followup"]
         today_followups = Followup.search(

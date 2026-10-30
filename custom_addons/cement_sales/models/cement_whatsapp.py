@@ -5,46 +5,51 @@ from odoo import _, models
 from odoo.exceptions import AccessError, UserError
 
 
-class CementWhatsappMixin:
-    """WhatsApp 网页版发送辅助（纯 Python 混入类，不注册为 Odoo 模型）。
+def _whatsapp_normalize(self, phone):
+    """把各种写法的电话号码规范成 wa.me 需要的国际格式（纯数字，无 + 号）。
 
-    通过 wa.me 的 click-to-chat 链接调起 WhatsApp 网页版（web.whatsapp.com）
-    或手机客户端，自动带出收件人与预填消息，用户确认后发送。
-    不依赖任何外部 API，无额外费用与封号风险。
+    - 去掉所有非数字字符；
+    - 「00」国际前缀去掉；
+    - 「0」开头按加纳本地号码换成国家码 233；
+    - 9 位无前缀号码视为加纳号码补 233。
     """
-
-    def _whatsapp_normalize(self, phone):
-        """把各种写法的电话号码规范成 wa.me 需要的国际格式（纯数字，无 + 号）。
-
-        - 去掉所有非数字字符；
-        - 「00」国际前缀去掉；
-        - 「0」开头按加纳本地号码换成国家码 233；
-        - 9 位无前缀号码视为加纳号码补 233。
-        """
-        digits = re.sub(r"\D", "", phone or "")
-        if digits.startswith("00"):
-            digits = digits[2:]
-        if digits.startswith("0"):
-            digits = "233" + digits[1:]
-        elif len(digits) == 9:
-            digits = "233" + digits
-        if len(digits) < 8:
-            raise UserError(
-                _("电话号码无效，无法通过 WhatsApp 发送：%s") % (phone or _("（空）"))
-            )
-        return digits
-
-    def _whatsapp_action(self, phone, message):
-        """返回打开 WhatsApp 网页版并预填消息的动作。"""
-        digits = self._whatsapp_normalize(phone)
-        return {
-            "type": "ir.actions.act_url",
-            "url": "https://wa.me/%s?text=%s" % (digits, quote(message, safe="")),
-            "target": "new",
-        }
+    digits = re.sub(r"\D", "", phone or "")
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if digits.startswith("0"):
+        digits = "233" + digits[1:]
+    elif len(digits) == 9:
+        digits = "233" + digits
+    if len(digits) < 8:
+        raise UserError(
+            _("电话号码无效，无法通过 WhatsApp 发送：%s") % (phone or _("（空）"))
+        )
+    return digits
 
 
-class CementCustomerWhatsapp(CementWhatsappMixin, models.Model):
+def _whatsapp_action(self, phone, message):
+    """返回打开 WhatsApp 网页版并预填消息的动作。"""
+    digits = _whatsapp_normalize(self, phone)
+    return {
+        "type": "ir.actions.act_url",
+        "url": "https://wa.me/%s?text=%s" % (digits, quote(message, safe="")),
+        "target": "new",
+    }
+
+
+def whatsapp_helpers(cls):
+    """把 WhatsApp 辅助方法绑定为模型类方法。
+
+    不能用普通 Python 混入类参与模型 MRO——升级时 Odoo 重排 __bases__
+    会报 "object layout differs"。函数属性赋值不改变类布局，安全。
+    """
+    cls._whatsapp_normalize = _whatsapp_normalize
+    cls._whatsapp_action = _whatsapp_action
+    return cls
+
+
+@whatsapp_helpers
+class CementCustomerWhatsapp(models.Model):
     _inherit = "cement.customer"
 
     def _whatsapp_customer_phone(self):
@@ -106,7 +111,8 @@ class CementCustomerWhatsapp(CementWhatsappMixin, models.Model):
         return self._whatsapp_action(phone, "\n".join(lines))
 
 
-class CementDeliveryWhatsapp(CementWhatsappMixin, models.Model):
+@whatsapp_helpers
+class CementDeliveryWhatsapp(models.Model):
     _inherit = "cement.delivery"
 
     def _whatsapp_customer_phone(self):
@@ -206,7 +212,8 @@ class CementDeliveryWhatsapp(CementWhatsappMixin, models.Model):
         return self._whatsapp_action(phone, "\n".join(lines))
 
 
-class SaleOrderWhatsapp(CementWhatsappMixin, models.Model):
+@whatsapp_helpers
+class SaleOrderWhatsapp(models.Model):
     _inherit = "sale.order"
 
     def action_send_whatsapp(self):
@@ -242,7 +249,8 @@ class SaleOrderWhatsapp(CementWhatsappMixin, models.Model):
         return self._whatsapp_action(phone, "\n".join(lines))
 
 
-class ResPartnerWhatsapp(CementWhatsappMixin, models.Model):
+@whatsapp_helpers
+class ResPartnerWhatsapp(models.Model):
     _inherit = "res.partner"
 
     def _whatsapp_partner_phone(self):
