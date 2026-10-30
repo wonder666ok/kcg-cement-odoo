@@ -345,7 +345,20 @@
     <menuitem id="menu_cement_customer" name="Customers" parent="menu_cement_sales_root"
               action="action_cement_customer" sequence="10"
               groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
+
+    <!-- 销售订单：显示全部未取消单据（含草稿/报价），新建后立即出现在列表中 -->
+    <record id="action_cement_sales_orders" model="ir.actions.act_window">
+        <field name="name">销售订单</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '!=', 'cancel')]</field>
+        <field name="search_view_id" ref="sale.view_sales_order_filter"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">还没有销售订单</p>
+            <p>点击“新建”开出订单，保存后立即会显示在这里；状态为“报价单”的是尚未确认的单据。</p>
+        </field>
+    </record>
     <menuitem id="menu_cement_sales_orders" name="销售订单"
-              parent="menu_cement_sales_root" action="sale.action_orders" sequence="30"
+              parent="menu_cement_sales_root" action="action_cement_sales_orders" sequence="30"
               groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
 </odoo>

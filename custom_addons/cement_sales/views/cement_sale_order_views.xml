@@ -116,6 +116,11 @@
                 <field name="customer_reference" string="客户参考号"/>
             </xpath>
             <xpath expr="//search/group" position="inside">
+                <filter name="cement_unconfirmed" string="未确认（草稿/报价）"
+                        domain="[('state', 'in', ('draft', 'sent'))]"/>
+                <filter name="cement_confirmed" string="已确认"
+                        domain="[('state', 'in', ('sale', 'done'))]"/>
+                <separator/>
                 <filter name="group_cement_customer" string="水泥客户" domain="[]" context="{'group_by': 'cement_customer_id'}"/>
                 <filter name="group_delivery_region" string="交付地区" domain="[]" context="{'group_by': 'delivery_region'}"/>
                 <filter name="group_sales_source" string="销售来源" domain="[]" context="{'group_by': 'sales_source'}"/>
@@ -187,8 +192,8 @@
         <field name="view_mode">list,form</field>
         <field name="domain">[('state', 'in', ('draft', 'sent'))]</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">还没有报价单</p>
-            <p>新建的销售单据会先保存在这里，点击“确认订单”后才会进入销售订单列表。</p>
+            <p class="o_view_nocontent_smiling_face">还没有未确认的报价单</p>
+            <p>这里集中列出所有尚未确认的销售单据，确认后会转入销售订单列表（销售订单菜单同样能看到）。</p>
         </field>
     </record>
     <menuitem id="menu_cement_quotation" name="报价单"
