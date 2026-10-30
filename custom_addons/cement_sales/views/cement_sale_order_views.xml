@@ -181,6 +181,20 @@
               parent="menu_cement_sales_root" action="action_cement_sales_dashboard"
               sequence="5"
               groups="cement_sales.group_cement_sales_user,cement_sales.group_cement_sales_manager,sales_team.group_sale_salesman,account.group_account_invoice,account.group_account_readonly"/>
+    <record id="action_cement_quotation" model="ir.actions.act_window">
+        <field name="name">报价单</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', 'in', ('draft', 'sent'))]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">还没有报价单</p>
+            <p>新建的销售单据会先保存在这里，点击“确认订单”后才会进入销售订单列表。</p>
+        </field>
+    </record>
+    <menuitem id="menu_cement_quotation" name="报价单"
+              parent="menu_cement_sales_root" action="action_cement_quotation"
+              sequence="29"
+              groups="cement_sales.group_cement_sales_user,cement_sales.group_cement_sales_manager,sales_team.group_sale_salesman,account.group_account_invoice,account.group_account_readonly"/>
     <menuitem id="menu_cement_sales_analysis" name="销售分析"
               parent="menu_cement_sales_root" action="action_cement_sales_analysis"
               sequence="35" groups="cement_sales.group_cement_sales_user,cement_sales.group_cement_sales_manager,sales_team.group_sale_salesman,account.group_account_invoice,account.group_account_readonly"/>
