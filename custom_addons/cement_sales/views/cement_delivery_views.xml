@@ -219,7 +219,7 @@
     <record id="action_cement_delivery" model="ir.actions.act_window">
         <field name="name">运输管理</field>
         <field name="res_model">cement.delivery</field>
-        <field name="view_mode">kanban,list,form</field>
+        <field name="view_mode">list,kanban,form</field>
         <field name="search_view_id" ref="view_cement_delivery_search"/>
     </record>
 
