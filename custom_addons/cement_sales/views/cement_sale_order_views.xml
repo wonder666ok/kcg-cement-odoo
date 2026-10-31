@@ -30,7 +30,7 @@
                     <field name="sales_source"/>
                     <field name="customer_reference"/>
                     <field name="delivery_region"/>
-                    <field name="delivery_address"/>
+                    <field name="delivery_address" invisible="1"/>
                     <field name="payment_term_note"/>
                     <field name="delivery_note"/>
                     <field name="sales_remark"/>
