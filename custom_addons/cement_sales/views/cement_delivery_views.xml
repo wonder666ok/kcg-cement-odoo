@@ -77,7 +77,7 @@
                 <field name="loading_date" optional="hide"/>
                 <field name="departure_date"/>
                 <field name="actual_delivery_date"/>
-                <field name="freight_amount" optional="hide"/>
+                <field name="freight_amount" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-muted="state == 'draft'"
                        decoration-info="state == 'scheduled'"
