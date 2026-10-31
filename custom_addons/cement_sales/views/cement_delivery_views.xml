@@ -160,7 +160,7 @@
                         <group string="交付信息">
                             <field name="delivery_date"/>
                             <field name="delivery_region"/>
-                            <field name="delivery_address"/>
+                            <field name="delivery_address" invisible="1"/>
                             <field name="cement_grade"/>
                             <field name="quantity"/>
                             <field name="weight_tons" readonly="1"/>
