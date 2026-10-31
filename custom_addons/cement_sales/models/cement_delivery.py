@@ -63,6 +63,7 @@ class CementDelivery(models.Model):
     weight_tons = fields.Float(
         string="吨数",
         compute="_compute_weight_tons",
+        store=True,
         digits=(16, 3),
         help="把交货数量折算成吨，仅用于显示与对账。订单金额与这一列无关。",
     )

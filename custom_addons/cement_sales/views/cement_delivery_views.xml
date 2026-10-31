@@ -277,6 +277,6 @@
               groups="cement_sales.group_cement_sales_user,stock.group_stock_user,account.group_account_invoice,account.group_account_readonly"/>
     <menuitem id="menu_cement_stock_pickings" name="发货管理"
               parent="menu_cement_sales_root" action="stock.action_picking_tree_all" sequence="50"
-              active="False"
+              active="True"
               groups="cement_sales.group_cement_sales_user,stock.group_stock_user,account.group_account_invoice,account.group_account_readonly"/>
 </odoo>
