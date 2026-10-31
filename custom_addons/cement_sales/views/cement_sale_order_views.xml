@@ -34,9 +34,9 @@
                     <field name="payment_term_note"/>
                     <field name="delivery_note"/>
                     <field name="sales_remark"/>
-                    <field name="cement_customer_company_name"/>
-                    <field name="cement_customer_phone"/>
-                    <field name="cement_customer_region"/>
+                    <field name="cement_customer_company_name" invisible="1"/>
+                    <field name="cement_customer_phone" invisible="1"/>
+                    <field name="cement_customer_region" invisible="1"/>
                 </group>
             </xpath>
             <xpath expr="//group[field[@name='cement_customer_id']]" position="after">
