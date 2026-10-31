@@ -11,8 +11,7 @@
                 <field name="vehicle_number"/>
                 <field name="driver_name"/>
                 <field name="transport_type"/>
-                <field name="transporter_name"/>
-                <field name="transport_carrier_id"/>
+                <field name="transport_carrier_id" string="承运商"/>
                 <field name="transport_vehicle_id"/>
                 <field name="transport_driver_id"/>
                 <field name="tracking_reference"/>
@@ -37,7 +36,6 @@
                     <filter name="group_region" string="按交货地区" context="{'group_by': 'delivery_region'}"/>
                     <filter name="group_state" string="按状态" context="{'group_by': 'state'}"/>
                     <filter name="group_driver" string="按司机" context="{'group_by': 'driver_name'}"/>
-                    <filter name="group_transporter" string="按承运人" context="{'group_by': 'transporter_name'}"/>
                     <filter name="group_carrier" string="按承运商" context="{'group_by': 'transport_carrier_id'}"/>
                     <filter name="group_vehicle" string="按车辆" context="{'group_by': 'transport_vehicle_id'}"/>
                     <filter name="group_transport_type" string="按运输方式" context="{'group_by': 'transport_type'}"/>
@@ -171,13 +169,12 @@
                     <group>
                         <group string="运输信息">
                             <field name="transport_type"/>
-                            <field name="transport_carrier_id"/>
+                            <field name="transport_carrier_id" string="承运商"/>
                             <field name="transport_vehicle_id"
                                    domain="[('carrier_id', '=?', transport_carrier_id)]"/>
                             <field name="transport_driver_id"
                                    domain="[('carrier_id', '=?', transport_carrier_id)]"/>
-                            <field name="transporter_name"/>
-                            <field name="transporter_phone"/>
+                            <field name="transporter_phone" string="承运商电话"/>
                             <field name="vehicle_number"/>
                             <field name="driver_name"/>
                             <field name="driver_phone"/>
