@@ -41,6 +41,8 @@
                     <filter name="group_carrier" string="按承运商" context="{'group_by': 'transport_carrier_id'}"/>
                     <filter name="group_vehicle" string="按车辆" context="{'group_by': 'transport_vehicle_id'}"/>
                     <filter name="group_transport_type" string="按运输方式" context="{'group_by': 'transport_type'}"/>
+                    <filter name="group_month" string="按月份" context="{'group_by': 'delivery_date:month'}"/>
+                    <filter name="group_delivery_day" string="按交货日期" context="{'group_by': 'delivery_date:day'}"/>
                 </group>
             </search>
         </field>
@@ -61,8 +63,8 @@
                 <field name="picking_id" optional="show"/>
                 <field name="customer_id"/>
                 <field name="delivery_region"/>
-                <field name="quantity"/>
-                <field name="weight_tons" optional="show"/>
+                <field name="quantity" sum="合计袋数"/>
+                <field name="weight_tons" optional="show" sum="合计吨数"/>
                 <field name="received_quantity" optional="hide"/>
                 <field name="shortage_quantity" optional="hide"/>
                 <field name="over_received_quantity" optional="hide"/>
@@ -77,7 +79,7 @@
                 <field name="loading_date" optional="hide"/>
                 <field name="departure_date"/>
                 <field name="actual_delivery_date"/>
-                <field name="freight_amount" optional="show"/>
+                <field name="freight_amount" optional="show" sum="合计运费"/>
                 <field name="state" widget="badge"
                        decoration-muted="state == 'draft'"
                        decoration-info="state == 'scheduled'"
@@ -221,10 +223,60 @@
         <field name="search_view_id" ref="view_cement_delivery_search"/>
     </record>
 
+    <!-- 运费统计：透视表，可按承运商/月份/客户交叉汇总运费 -->
+    <record id="view_cement_delivery_pivot" model="ir.ui.view">
+        <field name="name">cement.delivery.pivot.freight</field>
+        <field name="model">cement.delivery</field>
+        <field name="arch" type="xml">
+            <pivot string="运费统计" sample="1">
+                <field name="transport_carrier_id" type="row"/>
+                <field name="delivery_date" type="col" interval="month"/>
+                <field name="quantity" type="measure"/>
+                <field name="weight_tons" type="measure"/>
+                <field name="freight_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_cement_delivery_freight_list" model="ir.ui.view">
+        <field name="name">cement.delivery.list.freight</field>
+        <field name="model">cement.delivery</field>
+        <field name="arch" type="xml">
+            <list string="运费明细" default_order="delivery_date desc, id desc">
+                <field name="delivery_date"/>
+                <field name="sale_order_id" optional="show"/>
+                <field name="customer_id"/>
+                <field name="delivery_region" optional="show"/>
+                <field name="quantity" sum="合计袋数"/>
+                <field name="transport_carrier_id"/>
+                <field name="vehicle_number" optional="show"/>
+                <field name="driver_name" optional="show"/>
+                <field name="transport_type" optional="show"/>
+                <field name="freight_amount" sum="合计运费"/>
+                <field name="state" widget="badge" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_cement_freight_stats" model="ir.actions.act_window">
+        <field name="name">运费统计</field>
+        <field name="res_model">cement.delivery</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_cement_delivery_pivot')}), (0, 0, {'view_mode': 'list', 'view_id': ref('view_cement_delivery_freight_list')})]"/>
+        <field name="search_view_id" ref="view_cement_delivery_search"/>
+        <field name="context">{'search_default_group_carrier': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">运费统计</p>
+            <p>按承运商、月份、客户等维度透视汇总运费；切换到“列表”页签可查看明细与合计。</p>
+        </field>
+    </record>
+    <menuitem id="menu_cement_freight_stats" name="运费统计"
+              parent="menu_cement_sales_root" action="action_cement_freight_stats" sequence="45"
+              groups="cement_sales.group_cement_sales_user,stock.group_stock_user,account.group_account_invoice,account.group_account_readonly"/>
+
     <menuitem id="menu_cement_delivery" name="运输管理"
               parent="menu_cement_sales_root" action="action_cement_delivery" sequence="40"
               groups="cement_sales.group_cement_sales_user,stock.group_stock_user,account.group_account_invoice,account.group_account_readonly"/>
     <menuitem id="menu_cement_stock_pickings" name="发货管理"
               parent="menu_cement_sales_root" action="stock.action_picking_tree_all" sequence="50"
+              active="False"
               groups="cement_sales.group_cement_sales_user,stock.group_stock_user,account.group_account_invoice,account.group_account_readonly"/>
 </odoo>
