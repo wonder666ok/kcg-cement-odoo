@@ -60,7 +60,7 @@
                   decoration-danger="state == 'cancelled'">
                 <field name="delivery_date"/>
                 <field name="sale_order_id"/>
-                <field name="picking_id" optional="show"/>
+                <field name="picking_id" optional="hide"/>
                 <field name="customer_id"/>
                 <field name="delivery_region"/>
                 <field name="quantity" sum="合计袋数"/>
