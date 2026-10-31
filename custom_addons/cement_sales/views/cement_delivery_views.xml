@@ -215,13 +215,13 @@
     </record>
 
     <record id="action_cement_delivery" model="ir.actions.act_window">
-        <field name="name">交付管理</field>
+        <field name="name">运输管理</field>
         <field name="res_model">cement.delivery</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="search_view_id" ref="view_cement_delivery_search"/>
     </record>
 
-    <menuitem id="menu_cement_delivery" name="交付管理"
+    <menuitem id="menu_cement_delivery" name="运输管理"
               parent="menu_cement_sales_root" action="action_cement_delivery" sequence="40"
               groups="cement_sales.group_cement_sales_user,stock.group_stock_user,account.group_account_invoice,account.group_account_readonly"/>
     <menuitem id="menu_cement_stock_pickings" name="发货管理"

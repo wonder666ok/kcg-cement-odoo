@@ -93,7 +93,7 @@
             <form string="客户">
                 <header>
                     <button name="action_new_cement_quotation" type="object"
-                            string="新建报价" class="oe_highlight"/>
+                            string="新建销售订单" class="oe_highlight"/>
                     <button name="action_send_whatsapp" type="object"
                             string="WhatsApp 消息" icon="fa-whatsapp"/>
                     <button name="action_send_whatsapp_reminder" type="object"
@@ -125,11 +125,11 @@
                         <button name="action_view_customer_overdue_receivables" type="object" class="oe_stat_button" icon="fa-clock-o" groups="account.group_account_invoice,account.group_account_readonly" invisible="overdue_invoice_count == 0"><field name="overdue_invoice_count" widget="statinfo" string="逾期应收"/></button>
                         <button name="action_view_cement_orders" type="object"
                                 class="oe_stat_button" icon="fa-list-alt">
-                            <field name="quotation_count" widget="statinfo" string="报价数量"/>
+                            <field name="quotation_count" widget="statinfo" string="销售订单数量"/>
                         </button>
                         <button name="action_view_confirmed_cement_orders" type="object"
                                 class="oe_stat_button" icon="fa-check-circle">
-                            <field name="confirmed_order_count" widget="statinfo" string="已确认订单数量"/>
+                            <field name="confirmed_order_count" widget="statinfo" string="出库单数量"/>
                         </button>
                         <button name="action_view_customer_deliveries" type="object"
                                 class="oe_stat_button" icon="fa-truck">
@@ -346,19 +346,19 @@
               action="action_cement_customer" sequence="10"
               groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
 
-    <!-- 销售订单：仅显示已确认的单据；未确认的报价单在「报价单」菜单 -->
+    <!-- 出库单：已确认的销售订单；未确认的在「销售订单」菜单 -->
     <record id="action_cement_sales_orders" model="ir.actions.act_window">
-        <field name="name">销售订单</field>
+        <field name="name">出库单</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('state', 'in', ('sale', 'done'))]</field>
         <field name="search_view_id" ref="sale.view_sales_order_filter"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">还没有已确认的销售订单</p>
-            <p>新建单据保存后是「报价单」，在“报价单”菜单里点“确认订单”后才会转为销售订单并出现在这里。</p>
+            <p class="o_view_nocontent_smiling_face">还没有出库单</p>
+            <p>已确认的销售订单会出现在这里；未确认的在「销售订单」菜单中点“确认订单”后转入。</p>
         </field>
     </record>
-    <menuitem id="menu_cement_sales_orders" name="销售订单"
+    <menuitem id="menu_cement_sales_orders" name="出库单"
               parent="menu_cement_sales_root" action="action_cement_sales_orders" sequence="30"
               groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
 </odoo>

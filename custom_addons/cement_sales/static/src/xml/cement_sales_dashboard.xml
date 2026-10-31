@@ -59,7 +59,7 @@
                     <section class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white"><h2 class="h5 mb-0">销售员统计</h2></div>
                         <div class="table-responsive"><table class="table table-hover align-middle mb-0">
-                            <thead><tr><th>销售员</th><th class="text-end">客户数</th><th class="text-end">跟进数</th><th class="text-end">报价</th><th class="text-end">确认订单</th><th class="text-end">销售袋数</th><th class="text-end">销售金额</th><th class="text-end">回款</th></tr></thead>
+                            <thead><tr><th>销售员</th><th class="text-end">客户数</th><th class="text-end">跟进数</th><th class="text-end">销售订单</th><th class="text-end">出库单</th><th class="text-end">销售袋数</th><th class="text-end">销售金额</th><th class="text-end">回款</th></tr></thead>
                             <tbody><tr t-foreach="state.data.salespersons" t-as="row" t-key="row.id || row.name"><td><t t-esc="row.name"/></td><td class="text-end"><t t-esc="formatNumber(row.customer_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.followup_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.quotation_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.confirmed_order_count)"/></td><td class="text-end"><t t-esc="formatNumber(row.sales_bags)"/></td><td class="text-end"><t t-esc="formatMoney(row.sales_amount)"/></td><td class="text-end"><t t-esc="formatMoney(row.payment_amount)"/></td></tr></tbody>
                         </table></div>
                     </section>

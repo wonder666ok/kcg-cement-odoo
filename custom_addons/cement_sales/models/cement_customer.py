@@ -102,10 +102,10 @@ class CementCustomer(models.Model):
         "sale.order", "cement_customer_id", string="销售订单"
     )
     quotation_count = fields.Integer(
-        string="报价数量", compute="_compute_sales_statistics"
+        string="销售订单数量", compute="_compute_sales_statistics"
     )
     confirmed_order_count = fields.Integer(
-        string="已确认订单数量", compute="_compute_sales_statistics"
+        string="出库单数量", compute="_compute_sales_statistics"
     )
     sales_currency_id = fields.Many2one(
         "res.currency", string="销售统计币种", compute="_compute_sales_statistics"
@@ -851,7 +851,7 @@ class CementCustomer(models.Model):
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
-            "name": "客户已确认订单",
+            "name": "客户出库单",
             "res_model": "sale.order",
             "view_mode": "list,form",
             "domain": [
@@ -868,7 +868,7 @@ class CementCustomer(models.Model):
             context["default_partner_id"] = self.partner_id.id
         return {
             "type": "ir.actions.act_window",
-            "name": "新建报价",
+            "name": "新建销售订单",
             "res_model": "sale.order",
             "view_mode": "form",
             "views": [(False, "form")],

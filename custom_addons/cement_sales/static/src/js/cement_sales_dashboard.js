@@ -56,8 +56,8 @@ export class CementSalesDashboard extends Component {
                 { key: "followup_overdue", label: "\u5df2\u903e\u671f\u8ddf\u8fdb", value: kpis.overdue_followup_count },
             ],
             [
-                { key: "quotations", label: this.state.data.period_label + "\u62a5\u4ef7\u6570\u91cf", value: kpis.quotation_count },
-                { key: "orders", label: this.state.data.period_label + "\u786e\u8ba4\u8ba2\u5355", value: kpis.confirmed_order_count },
+                { key: "quotations", label: this.state.data.period_label + "\u9500\u552e\u8ba2\u5355\u6570\u91cf", value: kpis.quotation_count },
+                { key: "orders", label: this.state.data.period_label + "\u51fa\u5e93\u5355", value: kpis.confirmed_order_count },
                 { key: "sales_bags", label: this.state.data.period_label + "\u9500\u552e\u888b\u6570", value: kpis.sales_bags },
                 { key: "sales", label: this.state.data.period_label + "\u9500\u552e\u91d1\u989d", value: kpis.sales_amount, money: true },
             ],
@@ -158,13 +158,14 @@ export class CementSalesDashboard extends Component {
             const domain = [...companyDomain, ...dateDomain];
             if (key === "quotations") domain.push(["state", "in", ["draft", "sent"]]);
             else domain.push(["state", "in", ["sale", "done"]]);
-            return this.openAction("sale.order", domain, "\u9500\u552e\u8ba2\u5355");
+            const actionName = key === "quotations" ? "\u9500\u552e\u8ba2\u5355" : "\u51fa\u5e93\u5355";
+            return this.openAction("sale.order", domain, actionName);
         }
         if (key === "delivery" || key === "delivered_bags") {
             const domain = key === "delivery"
                 ? [["state", "in", ["draft", "scheduled", "in_transit"]], ["sale_order_id.company_id", "=", this.state.data.company_id]]
                 : [["state", "=", "delivered"], ["sale_order_id.company_id", "=", this.state.data.company_id], ["delivery_date", ">=", this.state.data.date_from], ["delivery_date", "<", this.state.data.date_to_exclusive]];
-            return this.openAction("cement.delivery", domain, "\u4ea4\u4ed8\u7ba1\u7406");
+            return this.openAction("cement.delivery", domain, "\u8fd0\u8f93\u7ba1\u7406");
         }
         if (key === "invoices") {
             return this.openAction("account.move", linkedInvoices, "\u5ba2\u6237\u53d1\u7968");
