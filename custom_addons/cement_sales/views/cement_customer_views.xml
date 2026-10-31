@@ -60,7 +60,7 @@
         <field name="name">cement.customer.list</field>
         <field name="model">cement.customer</field>
         <field name="arch" type="xml">
-            <list string="客户">
+            <list string="客户" default_order="customer_status desc, name">
                 <field name="image_1920" widget="image" options="{'size': [40, 40]}"
                        optional="show"/>
                 <field name="name"/>
@@ -346,16 +346,16 @@
               action="action_cement_customer" sequence="10"
               groups="cement_sales.group_cement_sales_user,account.group_account_invoice,account.group_account_readonly"/>
 
-    <!-- 销售订单：显示全部未取消单据（含草稿/报价），新建后立即出现在列表中 -->
+    <!-- 销售订单：仅显示已确认的单据；未确认的报价单在「报价单」菜单 -->
     <record id="action_cement_sales_orders" model="ir.actions.act_window">
         <field name="name">销售订单</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '!=', 'cancel')]</field>
+        <field name="domain">[('state', 'in', ('sale', 'done'))]</field>
         <field name="search_view_id" ref="sale.view_sales_order_filter"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">还没有销售订单</p>
-            <p>点击“新建”开出订单，保存后立即会显示在这里；状态为“报价单”的是尚未确认的单据。</p>
+            <p class="o_view_nocontent_smiling_face">还没有已确认的销售订单</p>
+            <p>新建单据保存后是「报价单」，在“报价单”菜单里点“确认订单”后才会转为销售订单并出现在这里。</p>
         </field>
     </record>
     <menuitem id="menu_cement_sales_orders" name="销售订单"
