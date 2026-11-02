@@ -36,6 +36,55 @@ $o-tech-line: rgba(31, 232, 200, 0.25);
         -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.35) 40%, rgba(0, 0, 0, 0.75));
     }
 
+    // ---------- 顶部英文标语 ----------
+    .tech-slogan {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1.2rem;
+    }
+
+    .tech-slogan-line {
+        flex: 0 1 220px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(31, 232, 200, 0.6));
+
+        &:last-child {
+            background: linear-gradient(90deg, rgba(31, 232, 200, 0.6), transparent);
+        }
+    }
+
+    .tech-slogan-text {
+        position: relative;
+        font-size: 1.05rem;
+        font-weight: 600;
+        letter-spacing: 4px;
+        white-space: nowrap;
+        text-transform: capitalize;
+        background: linear-gradient(92deg, #6ffbe2 0%, #a8f0ff 25%, #6fd8ff 50%, #a8f0ff 75%, #6ffbe2 100%);
+        background-size: 220% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 0 10px rgba(31, 232, 200, 0.45));
+        animation: tech-slogan-flow 6s linear infinite;
+
+        &::before,
+        &::after {
+            content: "◆";
+            font-size: 0.5rem;
+            vertical-align: middle;
+            margin: 0 0.9rem;
+            color: $o-tech-teal;
+            filter: drop-shadow(0 0 6px rgba(31, 232, 200, 0.8));
+        }
+    }
+
+    @keyframes tech-slogan-flow {
+        0% { background-position: 220% 0; }
+        100% { background-position: -220% 0; }
+    }
+
     // ---------- 顶部标题 ----------
     .tech-header {
         padding-bottom: 0.9rem;
