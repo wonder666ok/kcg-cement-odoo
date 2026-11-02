@@ -328,6 +328,11 @@ class CementDelivery(models.Model):
                 delivery.transport_carrier_id = driver.carrier_id
 
     @api.model
+    def _normalize_plate(self, plate):
+        """车牌规范化：去掉空格、连字符等非字母数字字符并转大写，用于与档案查重。"""
+        return re.sub(r"[^A-Z0-9]", "", (plate or "").upper())
+
+    @api.model
     def _match_transport_carrier(self, name):
         """把交付单上的承运人文本匹配到运输档案里的承运商。"""
         clean = (name or "").strip()
@@ -345,48 +350,95 @@ class CementDelivery(models.Model):
         return carrier
 
     def _sync_transport_registry(self):
-        """把交付单上手工填写的车辆/司机按承运商自动归档。
+        """交付单与运输档案双向补齐，并以交付单当前填写的内容为准即时更新档案。
 
-        - 车辆按「公司 + 规范车牌」查重，查不到就建档（挂在匹配到的承运商下）；
-        - 司机按「承运商 + 姓名（忽略大小写）」查重，查不到就建档并带电话；
-        - 同时把本单的承运商/车辆/司机档案字段补上，供下次直接下拉调用。
+        1. 交付单填了车牌/司机但没选档案：按车牌、姓名匹配档案，查不到则建档；
+        2. 已选档案但交付单上的车牌、司机姓名、司机电话被改动：直接写回档案，
+           保证「运输管理」与「运输档案」里的资料始终一致；
+        3. 车牌改成了另一辆已建档车的牌照：交付单改挂到那辆车上，避免车牌唯一约束报错；
+        4. 车辆归属承运商与交付单不一致：以交付单为准更新档案归属。
         客户自提（customer_pickup）不走承运商，跳过。
         """
         if self.env.context.get("skip_cement_transport_sync"):
             return
+        Vehicle = self.env["transport.vehicle"].with_context(
+            skip_cement_transport_sync=True
+        )
+        Driver = self.env["transport.driver"].with_context(
+            skip_cement_transport_sync=True
+        )
         for delivery in self:
             if delivery.transport_type == "customer_pickup":
                 continue
+            carrier = delivery.transport_carrier_id or self._match_transport_carrier(
+                delivery.transporter_name
+            )
             plate = (delivery.vehicle_number or "").strip()
-            carrier = self._match_transport_carrier(delivery.transporter_name)
-            if not plate or not carrier:
-                continue
-            Vehicle = self.env["transport.vehicle"].with_context(
-                skip_cement_transport_sync=True
-            )
-            Driver = self.env["transport.driver"].with_context(
-                skip_cement_transport_sync=True
-            )
-            plate_normalized = re.sub(r"[^A-Z0-9]", "", plate.upper())
-            vehicle = Vehicle.search(
-                [
-                    ("company_id", "=", delivery.company_id.id),
-                    ("plate_normalized", "=", plate_normalized),
-                ],
-                limit=1,
-            )
-            if not vehicle:
-                vehicle = Vehicle.create(
-                    {
-                        "name": plate,
-                        "carrier_id": carrier.id,
-                        "company_id": delivery.company_id.id,
-                        "notes": "由交付单自动建档",
-                    }
+            plate_key = self._normalize_plate(plate)
+            vehicle = delivery.transport_vehicle_id
+            driver = delivery.transport_driver_id
+
+            # ---------------- 车辆 ----------------
+            if vehicle and plate_key and vehicle.plate_normalized != plate_key:
+                # 车牌被改：新牌照若属于另一辆已建档的车，直接改挂过去
+                other = Vehicle.search(
+                    [
+                        ("company_id", "=", delivery.company_id.id),
+                        ("plate_normalized", "=", plate_key),
+                        ("id", "!=", vehicle.id),
+                    ],
+                    limit=1,
                 )
-            driver = False
+                if other:
+                    vehicle = other
+                else:
+                    vehicle.write({"name": plate})
+            if not vehicle and plate_key and carrier:
+                vehicle = Vehicle.search(
+                    [
+                        ("company_id", "=", delivery.company_id.id),
+                        ("plate_normalized", "=", plate_key),
+                    ],
+                    limit=1,
+                )
+                if not vehicle:
+                    vehicle = Vehicle.create(
+                        {
+                            "name": plate,
+                            "carrier_id": carrier.id,
+                            "company_id": delivery.company_id.id,
+                            "notes": "由交付单自动建档",
+                        }
+                    )
+            if vehicle and carrier and vehicle.carrier_id != carrier:
+                vehicle.write({"carrier_id": carrier.id})
+
+            # ---------------- 司机 ----------------
             driver_name = (delivery.driver_name or "").strip()
-            if driver_name:
+            driver_phone = (delivery.driver_phone or "").strip()
+            if driver and driver_name:
+                driver_vals = {}
+                if driver.name != driver_name:
+                    driver_carrier = carrier or driver.carrier_id
+                    duplicate = Driver
+                    if driver_carrier:
+                        duplicate = Driver.search(
+                            [
+                                ("carrier_id", "=", driver_carrier.id),
+                                ("name", "=ilike", driver_name),
+                                ("id", "!=", driver.id),
+                            ],
+                            limit=1,
+                        )
+                    if duplicate:
+                        driver = duplicate
+                    else:
+                        driver_vals["name"] = driver_name
+                if driver_phone and driver.phone != driver_phone:
+                    driver_vals["phone"] = driver_phone
+                if driver_vals:
+                    driver.write(driver_vals)
+            elif not driver and driver_name and carrier:
                 driver = Driver.search(
                     [("carrier_id", "=", carrier.id), ("name", "=ilike", driver_name)],
                     limit=1,
@@ -395,25 +447,28 @@ class CementDelivery(models.Model):
                     driver = Driver.create(
                         {
                             "name": driver_name,
-                            "phone": delivery.driver_phone or False,
+                            "phone": driver_phone or False,
                             "carrier_id": carrier.id,
                             "company_id": delivery.company_id.id,
                             "notes": "由交付单自动建档",
                         }
                     )
-                elif not driver.phone and delivery.driver_phone:
-                    driver.phone = delivery.driver_phone
+                elif driver_phone and driver.phone != driver_phone:
+                    driver.write({"phone": driver_phone})
             if vehicle and driver and not vehicle.driver_id:
                 vehicle.driver_id = driver
+
+            # ---------------- 回填本单的档案字段 ----------------
             updates = {}
-            if delivery.transport_carrier_id != carrier:
+            if carrier and delivery.transport_carrier_id != carrier:
                 updates["transport_carrier_id"] = carrier.id
-            if delivery.transport_vehicle_id != vehicle:
+            if vehicle and delivery.transport_vehicle_id != vehicle:
                 updates["transport_vehicle_id"] = vehicle.id
             if driver and delivery.transport_driver_id != driver:
                 updates["transport_driver_id"] = driver.id
             if updates:
                 super(CementDelivery, delivery).write(updates)
+
 
     def write(self, vals):
         if "state" not in vals:
