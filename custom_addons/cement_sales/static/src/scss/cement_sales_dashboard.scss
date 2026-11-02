@@ -1,15 +1,340 @@
-.o_cement_sales_dashboard {
-    background: #f5f6f8;
+// ============================================================
+// KCG 水泥销售经营驾驶舱 · 科技风主题（深色数据大屏）
+// 作用域：仅 .o_cement_sales_dashboard，不影响系统其他页面
+// ============================================================
 
-    .o_cement_dashboard_kpi {
-        border-top: 3px solid #315c78 !important;
+$o-tech-bg-1: #070d1c;
+$o-tech-bg-2: #0b1428;
+$o-tech-cyan: #00d4ff;
+$o-tech-blue: #4f8cff;
+$o-tech-purple: #8b6bff;
+$o-tech-text: #d5e4ff;
+$o-tech-dim: #7f95bd;
+$o-tech-line: rgba(0, 212, 255, 0.22);
+
+.o_cement_sales_dashboard {
+    position: relative;
+    color: $o-tech-text;
+    background:
+        radial-gradient(1100px 560px at 15% -8%, rgba(0, 120, 255, 0.22), transparent 60%),
+        radial-gradient(900px 520px at 88% 6%, rgba(139, 107, 255, 0.16), transparent 60%),
+        radial-gradient(700px 420px at 50% 110%, rgba(0, 190, 255, 0.10), transparent 60%),
+        linear-gradient(165deg, $o-tech-bg-2 0%, $o-tech-bg-1 55%, #05090f 100%);
+    background-attachment: local, local, local, local;
+    min-height: 100%;
+
+    // 科技网格底纹
+    .tech-grid-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+            linear-gradient(rgba(0, 190, 255, 0.045) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 190, 255, 0.045) 1px, transparent 1px);
+        background-size: 44px 44px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.35) 40%, rgba(0, 0, 0, 0.75));
+        -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.35) 40%, rgba(0, 0, 0, 0.75));
+    }
+
+    // ---------- 顶部标题 ----------
+    .tech-header {
+        padding-bottom: 0.9rem;
+        border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+    }
+
+    .tech-title {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #eaf4ff;
+        text-shadow: 0 0 18px rgba(0, 212, 255, 0.45);
+
+        .tech-title-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.15rem 0.55rem;
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            color: #04101f;
+            background: linear-gradient(135deg, $o-tech-cyan, $o-tech-blue);
+            border-radius: 4px;
+            box-shadow: 0 0 14px rgba(0, 212, 255, 0.55);
+        }
+    }
+
+    .tech-subtitle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.82rem;
+        letter-spacing: 1px;
+        color: $o-tech-dim;
+
+        .tech-subtitle-sep {
+            color: rgba(0, 212, 255, 0.35);
+            margin: 0 0.15rem;
+        }
+    }
+
+    // 呼吸的「实时」指示灯
+    .tech-live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #2eff9a;
+        box-shadow: 0 0 8px rgba(46, 255, 154, 0.9);
+        animation: tech-pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes tech-pulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(46, 255, 154, 0.6); }
+        50% { opacity: 0.55; box-shadow: 0 0 14px rgba(46, 255, 154, 1); }
+    }
+
+    .tech-label {
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+        color: $o-tech-dim;
+    }
+
+    .tech-select {
+        background-color: rgba(10, 22, 44, 0.85);
+        border: 1px solid $o-tech-line;
+        color: $o-tech-text;
+        box-shadow: none;
+
+        option { background-color: #0a162c; color: $o-tech-text; }
+
+        &:focus {
+            border-color: $o-tech-cyan;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15);
+        }
+    }
+
+    .tech-btn {
+        color: $o-tech-cyan;
+        background: rgba(0, 212, 255, 0.08);
+        border: 1px solid $o-tech-line;
+        letter-spacing: 2px;
+        transition: all 0.2s ease;
+
+        &:hover, &:focus {
+            color: #eaffff;
+            background: rgba(0, 212, 255, 0.18);
+            border-color: rgba(0, 212, 255, 0.6);
+            box-shadow: 0 0 14px rgba(0, 212, 255, 0.35);
+        }
+    }
+
+    .tech-alert {
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        color: #ffb4c0;
+        background: rgba(120, 20, 40, 0.35);
+        border: 1px solid rgba(255, 90, 120, 0.4);
+        border-radius: 6px;
+    }
+
+    .tech-loading { color: $o-tech-dim; i { color: $o-tech-cyan; } }
+
+    // ---------- 面板（数据卡片容器） ----------
+    .tech-panel {
+        position: relative;
+        background: linear-gradient(160deg, rgba(16, 32, 62, 0.72), rgba(10, 20, 40, 0.55));
+        border: 1px solid rgba(0, 212, 255, 0.14);
+        border-radius: 10px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), inset 0 0 40px rgba(0, 120, 255, 0.04);
+        padding: 1rem 1.1rem 0.6rem;
+
+        &::before {
+            content: "";
+            position: absolute;
+            top: -1px;
+            left: 18px;
+            width: 64px;
+            height: 2px;
+            background: linear-gradient(90deg, $o-tech-cyan, transparent);
+            border-radius: 2px;
+        }
+    }
+
+    .tech-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin: 0 0 0.85rem;
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: 2px;
+        color: #bfe9ff;
+
+        span { position: relative; }
+
+        &::before {
+            content: "";
+            width: 4px;
+            height: 16px;
+            border-radius: 2px;
+            background: linear-gradient(180deg, $o-tech-cyan, $o-tech-blue);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.7);
+        }
+
+        &::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(0, 212, 255, 0.35), transparent);
+            margin-left: 0.4rem;
+        }
+    }
+
+    .tech-panel-body { color: $o-tech-dim; padding-bottom: 0.8rem; }
+
+    // ---------- KPI 数据卡 ----------
+    .kpi-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 1rem 1.1rem;
+        overflow: hidden;
+        cursor: pointer;
+        background: linear-gradient(150deg, rgba(17, 36, 70, 0.85), rgba(10, 20, 42, 0.7));
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        border-radius: 8px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+
+        // 底部流光渐变条
+        &::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 2px;
+            background: linear-gradient(90deg, $o-tech-cyan, $o-tech-purple, transparent);
+            opacity: 0.45;
+            transition: opacity 0.2s ease;
+        }
+
+        // 角标括号
+        .kpi-corner {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            opacity: 0.7;
+
+            &.tl {
+                top: 6px; left: 6px;
+                border-top: 2px solid $o-tech-cyan;
+                border-left: 2px solid $o-tech-cyan;
+            }
+            &.br {
+                bottom: 6px; right: 6px;
+                border-bottom: 2px solid $o-tech-cyan;
+                border-right: 2px solid $o-tech-cyan;
+            }
+        }
+
+        .kpi-label {
+            font-size: 0.78rem;
+            letter-spacing: 1px;
+            color: $o-tech-dim;
+        }
+
+        .kpi-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.5px;
+            background: linear-gradient(92deg, #6ee7ff 0%, #9db9ff 55%, #c3a8ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: none;
+        }
+
+        &:hover {
+            transform: translateY(-3px);
+            border-color: rgba(0, 212, 255, 0.65);
+            box-shadow: 0 8px 26px rgba(0, 90, 200, 0.35), 0 0 18px rgba(0, 212, 255, 0.25);
+
+            &::after { opacity: 1; }
+        }
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.3);
+        }
+    }
+
+    // ---------- 数据表 ----------
+    .tech-table {
+        color: $o-tech-text;
+        font-variant-numeric: tabular-nums;
+
+        thead th {
+            white-space: nowrap;
+            color: #8fd8ff;
+            font-weight: 600;
+            letter-spacing: 1px;
+            background: rgba(0, 190, 255, 0.07);
+            border-bottom: 1px solid $o-tech-line !important;
+        }
+
+        td, th {
+            border-color: rgba(110, 160, 240, 0.14);
+            background: transparent;
+        }
+
+        tbody tr {
+            transition: background 0.15s ease;
+
+            &:hover {
+                background: rgba(0, 190, 255, 0.08);
+                --bs-table-bg: transparent;
+            }
+        }
+    }
+
+    .tech-money {
+        color: #7fe3ff;
+        font-weight: 600;
+    }
+
+    .tech-empty { color: $o-tech-dim; }
+
+    .tech-link {
+        padding: 0;
+        color: $o-tech-cyan;
+        background: none;
+        border: none;
+        text-decoration: none;
+
+        &:hover {
+            color: #b0f0ff;
+            text-decoration: underline;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.6);
+        }
     }
 
     .o_cement_customer_dashboard_table {
         max-height: 34rem;
+        overflow-y: auto;
     }
 
-    .table th {
-        white-space: nowrap;
+    .table th { white-space: nowrap; }
+
+    // ---------- 滚动条 ----------
+    &::-webkit-scrollbar { width: 10px; height: 10px; }
+    &::-webkit-scrollbar-track { background: rgba(8, 16, 32, 0.6); }
+    &::-webkit-scrollbar-thumb {
+        background: rgba(0, 150, 220, 0.35);
+        border-radius: 5px;
+        &:hover { background: rgba(0, 190, 255, 0.55); }
     }
 }
