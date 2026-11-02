@@ -38,7 +38,7 @@ class CementPrepaidTransaction(models.Model):
     type = fields.Selection(
         [
             ("recharge", "充值"),
-            ("deduction", "发货扣款"),
+            ("deduction", "扣款"),
             ("refund", "退款"),
             ("adjust", "调整"),
         ],
@@ -46,6 +46,12 @@ class CementPrepaidTransaction(models.Model):
         required=True,
         index=True,
         default="recharge",
+    )
+    deduction_kind = fields.Selection(
+        [("goods", "货款"), ("freight", "运费")],
+        string="扣款类别",
+        index=True,
+        help="扣款流水的类别：订单确认扣货款、运输安排扣运费。",
     )
     amount = fields.Monetary(
         string="金额",
@@ -89,7 +95,7 @@ class CementCustomer(models.Model):
 
     is_prepaid = fields.Boolean(
         string="预存款客户",
-        help="勾选后，交付单确认送达时会自动从该客户的预存款余额中扣款。",
+        help="勾选后，销售订单确认时自动扣除货款、运输安排成功时自动扣除运费，均从预存款余额中扣。",
     )
     prepaid_transaction_ids = fields.One2many(
         "cement.prepaid.transaction",
@@ -187,83 +193,146 @@ class CementPrepaidRecharge(models.TransientModel):
         return {"type": "ir.actions.act_window_close"}
 
 
-class CementDelivery(models.Model):
-    _inherit = "cement.delivery"
+class CementPrepaidMixinLogic:
+    """预存款扣款共用小工具（纯 Python 类，不参与 ORM 继承）。"""
 
-    # ------------------------------------------------------------------
-    # 预存款扣款：确认送达（state -> delivered）时按数量×订单单价扣款；
-    # 退出已送达状态（取消/重置）时自动撤销扣款流水。仅对勾选了
-    # 「预存款客户」的客户生效；重复确认不会重复扣款。
-    # ------------------------------------------------------------------
-    def _prepaid_deduction_amount(self):
-        """本次交付的扣款金额：交付数量 × 订单未税单价（多行按数量摊薄）。"""
-        self.ensure_one()
-        order = self.sale_order_id
-        lines = order.order_line.filtered(lambda line: not line.display_type)
-        if not lines or not self.quantity:
-            return 0.0
-        total_qty = sum(lines.mapped("product_uom_qty"))
-        if total_qty:
-            unit_price = order.amount_untaxed / total_qty
-        else:
-            unit_price = lines[0].price_unit
-        return round(self.quantity * unit_price, 2)
-
-    def _get_prepaid_deduction_tx(self):
-        self.ensure_one()
-        return self.env["cement.prepaid.transaction"].search(
-            [("delivery_id", "=", self.id), ("type", "=", "deduction")],
-            limit=1,
-        )
-
-    def _create_prepaid_deduction(self):
-        self.ensure_one()
-        customer = self.customer_id
-        if not customer or not customer.is_prepaid:
-            return False
-        if self._get_prepaid_deduction_tx():
-            return False  # 已扣过款，防重复
-        amount = self._prepaid_deduction_amount()
-        if not amount:
-            return False
-        balance = customer.prepaid_balance or 0.0
-        if balance < amount:
+    @staticmethod
+    def _check_prepaid_sufficient(customer, amount, scenario):
+        if amount and (customer.prepaid_balance or 0.0) < amount:
             raise UserError(
                 _(
                     "客户「%(customer)s」预存款余额不足：当前余额 %(balance).2f，"
-                    "本次发货需扣款 %(amount).2f。请先为客户充值，或取消预存款客户标记。"
+                    "%(scenario)s需扣款 %(amount).2f。请先为客户充值，或取消预存款客户标记。"
                 )
                 % {
                     "customer": customer.name,
-                    "balance": balance,
+                    "balance": customer.prepaid_balance or 0.0,
+                    "scenario": scenario,
                     "amount": amount,
                 }
             )
+
+
+class CementSaleOrder(models.Model):
+    _inherit = "sale.order"
+
+    # ------------------------------------------------------------------
+    # 预存款扣款（货款）：订单确认（state -> sale）时按订单未税金额全额
+    # 扣款；订单取消/退回草稿时自动撤销扣款流水。仅对勾选了
+    # 「预存款客户」的客户生效；余额不足时阻止确认；重复确认不会重复扣款。
+    # ------------------------------------------------------------------
+    def _get_prepaid_goods_tx(self):
+        self.ensure_one()
+        return self.env["cement.prepaid.transaction"].search(
+            [
+                ("sale_order_id", "=", self.id),
+                ("type", "=", "deduction"),
+                ("deduction_kind", "=", "goods"),
+            ],
+            limit=1,
+        )
+
+    def _create_prepaid_goods_deduction(self):
+        self.ensure_one()
+        customer = self.cement_customer_id
+        if not customer or not customer.is_prepaid:
+            return False
+        if self._get_prepaid_goods_tx():
+            return False  # 已扣过款，防重复
+        amount = round(self.amount_untaxed or 0.0, 2)
+        if not amount:
+            return False
+        CementPrepaidMixinLogic._check_prepaid_sufficient(
+            customer, amount, _("订单确认")
+        )
         return self.env["cement.prepaid.transaction"].create(
             {
                 "customer_id": customer.id,
                 "type": "deduction",
+                "deduction_kind": "goods",
+                "amount": -amount,
+                "sale_order_id": self.id,
+                "company_id": self.company_id.id,
+                "note": _("订单 %(order)s 确认自动扣款（货款）")
+                % {"order": self.name or self.id},
+            }
+        )
+
+    def _remove_prepaid_goods_deduction(self):
+        self.ensure_one()
+        self._get_prepaid_goods_tx().unlink()
+
+    def action_confirm(self):
+        res = super().action_confirm()
+        for order in self:
+            order._create_prepaid_goods_deduction()
+        return res
+
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get("state") and vals["state"] in ("draft", "cancel"):
+            for order in self:
+                order._remove_prepaid_goods_deduction()
+        return res
+
+
+class CementDelivery(models.Model):
+    _inherit = "cement.delivery"
+
+    # ------------------------------------------------------------------
+    # 预存款扣款（运费）：运输安排成功（state -> scheduled）时按交付单
+    # 运费扣款；运输取消或重置回待安排时自动撤销扣款流水。仅对勾选了
+    # 「预存款客户」的客户生效；余额不足时阻止安排；重复操作不会重复扣款。
+    # 货款在销售订单确认时已扣（见 CementSaleOrder）。
+    # ------------------------------------------------------------------
+    def _get_prepaid_freight_tx(self):
+        self.ensure_one()
+        return self.env["cement.prepaid.transaction"].search(
+            [
+                ("delivery_id", "=", self.id),
+                ("type", "=", "deduction"),
+                ("deduction_kind", "=", "freight"),
+            ],
+            limit=1,
+        )
+
+    def _create_prepaid_freight_deduction(self):
+        self.ensure_one()
+        customer = self.customer_id
+        if not customer or not customer.is_prepaid:
+            return False
+        if self._get_prepaid_freight_tx():
+            return False  # 已扣过款，防重复
+        amount = round(self.freight_amount or 0.0, 2)
+        if not amount:
+            return False
+        CementPrepaidMixinLogic._check_prepaid_sufficient(
+            customer, amount, _("运输安排")
+        )
+        return self.env["cement.prepaid.transaction"].create(
+            {
+                "customer_id": customer.id,
+                "type": "deduction",
+                "deduction_kind": "freight",
                 "amount": -amount,
                 "sale_order_id": self.sale_order_id.id,
                 "delivery_id": self.id,
                 "company_id": self.company_id.id,
-                "note": _("交付单 %(delivery)s 自动扣款：%(qty)s 袋 × 单价")
-                % {"delivery": self.sale_order_id.name or self.id, "qty": self.quantity},
+                "note": _("交付单 %(delivery)s 运输安排自动扣款（运费）")
+                % {"delivery": self.sale_order_id.name or self.id},
             }
         )
 
-    def _remove_prepaid_deduction(self):
+    def _remove_prepaid_freight_deduction(self):
         self.ensure_one()
-        tx = self._get_prepaid_deduction_tx()
-        if tx:
-            tx.unlink()
+        self._get_prepaid_freight_tx().unlink()
 
     def write(self, vals):
         res = super().write(vals)
         if vals.get("state"):
             for delivery in self:
-                if delivery.state == "delivered":
-                    delivery._create_prepaid_deduction()
-                else:
-                    delivery._remove_prepaid_deduction()
+                if delivery.state == "scheduled":
+                    delivery._create_prepaid_freight_deduction()
+                elif delivery.state in ("draft", "cancelled"):
+                    delivery._remove_prepaid_freight_deduction()
         return res

@@ -12,6 +12,7 @@
                 <field name="type" widget="badge"
                        decoration-info="type == 'recharge'"
                        decoration-warning="type == 'deduction'"/>
+                <field name="deduction_kind" optional="show"/>
                 <field name="amount"/>
                 <field name="sale_order_id" optional="hide"/>
                 <field name="delivery_id" optional="show"/>
@@ -32,6 +33,7 @@
                         <group>
                             <field name="customer_id"/>
                             <field name="type" readonly="type == 'deduction'"/>
+                            <field name="deduction_kind" readonly="type == 'deduction'"/>
                             <field name="amount"/>
                             <field name="date"/>
                         </group>
