@@ -356,7 +356,8 @@ class CementDelivery(models.Model):
         2. 已选档案但交付单上的车牌、司机姓名、司机电话被改动：直接写回档案，
            保证「运输管理」与「运输档案」里的资料始终一致；
         3. 车牌改成了另一辆已建档车的牌照：交付单改挂到那辆车上，避免车牌唯一约束报错；
-        4. 车辆归属承运商与交付单不一致：以交付单为准更新档案归属。
+        4. 车辆档案未归属承运商时按交付单补上；已有归属不覆盖，避免单据选错承
+           运商时把车辆改到别家名下。
         客户自提（customer_pickup）不走承运商，跳过。
         """
         if self.env.context.get("skip_cement_transport_sync"):
@@ -410,7 +411,8 @@ class CementDelivery(models.Model):
                             "notes": "由交付单自动建档",
                         }
                     )
-            if vehicle and carrier and vehicle.carrier_id != carrier:
+            if vehicle and carrier and not vehicle.carrier_id:
+                # 只在档案尚未归属时补上，避免单据选错承运商把车辆改到别家名下
                 vehicle.write({"carrier_id": carrier.id})
 
             # ---------------- 司机 ----------------
