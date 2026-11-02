@@ -4,11 +4,6 @@
         <div class="o_cement_sales_dashboard h-100 overflow-auto">
             <div class="tech-grid-overlay" aria-hidden="true"/>
             <div class="container-fluid py-4 px-3 px-lg-4 position-relative">
-                <div class="tech-slogan mb-3" aria-hidden="true">
-                    <span class="tech-slogan-line"/>
-                    <span class="tech-slogan-text">Every grit builds lasting glories</span>
-                    <span class="tech-slogan-line"/>
-                </div>
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 tech-header">
                     <div>
                         <h1 class="tech-title mb-1">
@@ -20,6 +15,11 @@
                             <t t-esc="state.data.date_from"/> 至 <t t-esc="state.data.period_label"/>
                             <span class="tech-subtitle-sep">|</span>公司币种 <t t-esc="state.data.currency.name"/>
                         </div>
+                    </div>
+                    <div class="tech-slogan" aria-hidden="true">
+                        <span class="tech-slogan-line"/>
+                        <span class="tech-slogan-text">Every grit builds lasting glories</span>
+                        <span class="tech-slogan-line"/>
                     </div>
                     <div class="d-flex align-items-center gap-2 tech-controls">
                         <label for="cement-dashboard-period" class="tech-label mb-0">统计范围</label>

@@ -45,7 +45,7 @@ $o-tech-line: rgba(31, 232, 200, 0.25);
     }
 
     .tech-slogan-line {
-        flex: 0 1 220px;
+        flex: 0 1 140px;
         height: 1px;
         background: linear-gradient(90deg, transparent, rgba(31, 232, 200, 0.6));
 
@@ -56,9 +56,9 @@ $o-tech-line: rgba(31, 232, 200, 0.25);
 
     .tech-slogan-text {
         position: relative;
-        font-size: 1.05rem;
-        font-weight: 600;
-        letter-spacing: 4px;
+        font-size: 2.1rem;
+        font-weight: 700;
+        letter-spacing: 5px;
         white-space: nowrap;
         text-transform: capitalize;
         background: linear-gradient(92deg, #6ffbe2 0%, #a8f0ff 25%, #6fd8ff 50%, #a8f0ff 75%, #6ffbe2 100%);
@@ -66,15 +66,15 @@ $o-tech-line: rgba(31, 232, 200, 0.25);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
-        filter: drop-shadow(0 0 10px rgba(31, 232, 200, 0.45));
+        filter: drop-shadow(0 0 14px rgba(31, 232, 200, 0.5));
         animation: tech-slogan-flow 6s linear infinite;
 
         &::before,
         &::after {
             content: "◆";
-            font-size: 0.5rem;
+            font-size: 0.7rem;
             vertical-align: middle;
-            margin: 0 0.9rem;
+            margin: 0 1rem;
             color: $o-tech-teal;
             filter: drop-shadow(0 0 6px rgba(31, 232, 200, 0.8));
         }
