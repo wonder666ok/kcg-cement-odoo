@@ -22,7 +22,7 @@
                 </button>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="attributes">
-                <attribute name="string">Odoo联系人</attribute>
+                <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <group string="水泥销售资料">
@@ -86,6 +86,9 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.sale_order_tree"/>
         <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='partner_id']" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </xpath>
             <xpath expr="//list/field[@name='partner_id']" position="after">
                 <field name="cement_customer_id" optional="show"/>
                 <field name="company_currency_id" invisible="1"/>

@@ -11,7 +11,7 @@ class SaleOrder(models.Model):
 
     cement_customer_id = fields.Many2one(
         "cement.customer",
-        string="水泥客户",
+        string="客户",
         ondelete="restrict",
     )
     cement_customer_company_name = fields.Char(
@@ -136,6 +136,21 @@ class SaleOrder(models.Model):
             customer = order.cement_customer_id
             if customer and not customer.partner_id and order.partner_id:
                 customer.sudo().write({"partner_id": order.partner_id.id})
+
+    @api.onchange("cement_customer_id")
+    def _onchange_cement_customer_set_partner(self):
+        """表单只保留一个「客户」栏：选择水泥客户后自动带出其 Odoo 联系人，
+        档案还没有联系人时按客户名自动补建，保证开票、回款链路正常。"""
+        for order in self:
+            customer = order.cement_customer_id
+            if not customer:
+                continue
+            if not customer.partner_id:
+                partner = self.env["res.partner"].create(
+                    {"name": customer.name, "phone": customer.phone or False}
+                )
+                customer.sudo().partner_id = partner
+            order.partner_id = customer.partner_id.id
 
     @api.depends(
         "amount_total",
