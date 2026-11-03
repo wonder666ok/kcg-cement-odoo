@@ -31,7 +31,12 @@ class SaleOrder(models.Model):
     )
     delivery_region = fields.Char(string="交付地区")
     delivery_address = fields.Text(string="交付地址")
-    customer_reference = fields.Char(string="客户参考号")
+    customer_reference = fields.Char(
+        string="客户电话号码",
+        related="cement_customer_id.phone",
+        readonly=True,
+        help="自动带出所选客户档案中的联系电话。",
+    )
     payment_term_note = fields.Char(string="付款条件说明")
     delivery_note = fields.Text(string="交付备注")
     sales_remark = fields.Text(string="销售备注")

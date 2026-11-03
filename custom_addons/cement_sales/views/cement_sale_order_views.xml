@@ -122,7 +122,7 @@
                 <field name="cement_customer_id" string="水泥客户"/>
                 <field name="delivery_region" string="交付地区"/>
                 <field name="sales_source" string="销售来源"/>
-                <field name="customer_reference" string="客户参考号"/>
+                <field name="customer_reference" string="客户电话号码"/>
             </xpath>
             <xpath expr="//search/group" position="inside">
                 <filter name="cement_unconfirmed" string="未确认（草稿）"
